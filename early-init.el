@@ -5,11 +5,55 @@
 ;; user-emacs-directory
 ;; user-init-file
 ;; command-line-functions
+(message "-------------------- Re-Doom: Early Init")
+(message "args: %s" command-line-args)
+
+(let (processed-cli-args
+      cmd
+      profile)
+  (while command-line-args
+    (pcase (pop command-line-args)
+      ("--sync"
+       (setq cmd 'sync)
+       ;; make non-interactive
+       )
+      ("--profile"
+       (setq profile (pop command-line-args))
+       )
+      ("--report"
+       (setq cmd 'report)
+       )
+      ("--batch"
+       (setq cmd 'batch)
+       )
+      ("--clean"
+       (setq cmd 'clean)
+       )
+      (other (push other processed-cli-args))
+      )
+    )
+  (setq command-line-args (reverse processed-cli-args)
+        re-doom--cmd (or cmd 'run)
+        re-doom-profile (or profile "default")
+        )
+  (message "Redoom: (profile %s) (command %s)" re-doom-profile re-doom--cmd)
+  )
+
+(defconst WIN-TYPES '(cygwin windows-ms ms-dos))
+
+(defconst MAC-TYPES '(darwin))
+
+(defconst BSD-TYPES '(darwin berkeley-unix gnu/kfreebsd))
+
+(defconst RE-DOOM-USER-DIR-ENV-VAR "DOOMDIR")
+
 
 ;; Recognize and setup debugging:
 (when (or (getenv-internal "DEBUG") init-file-debug)
+  (princ "Setting Debug")
   (setq init-file-debug t
         debug-on-error  t
+        re-doom--bootstrap-call-noop t
         )
   ;; todo - load-file tracking
 
@@ -28,8 +72,7 @@
 (setq gnutls-verify-error noninteractive
       gnutls-algorithm-priority (when (boundp 'libgnutls-version)
                                   (concat "SECURE128:+SECURE192:-VERS-ALL"
-                                          (if (and (not IS-WINDOWS)
-                                                   (>= libgnutls-version 30605))
+                                          (if (and (not (memq system-type WIN-TYPES)) (>= libgnutls-version 30605))
                                               ":+VERS-TLS1.3")
                                           ":+VERS-TLS1.2"))
       gnutls-min-prime-bits 3072 ;; `gnutls-min-prime-bits' is set based on recommendations from https://www.keylength.com/en/4/
@@ -44,13 +87,20 @@
                     )
       )
 
-
 ;; Add re-doom to load path
-(if (getenv "REDOOMDIR")
-    (set-default-toplevel-value 'load-path
-                                (cons (getenv "REDOOMDIR")
-                                      (default-toplevel-value 'load-path)))
-    )
+(unless (getenv RE-DOOM-USER-DIR-ENV-VAR)
+  (error "No Doomdir found"))
 
+(set-default-toplevel-value 'load-path
+                             (cons (getenv RE-DOOM-USER-DIR-ENV-VAR)
+                                   (cons (file-name-concat (getenv "HOME") ".emacs.d/re-doom")
+                                         (default-toplevel-value 'load-path))))
+
+(message "\n\nLoad Path: %s" load-path)
+(message "\n\nUser Emacs Dir: %s" user-emacs-directory)
+(message "User Init: %s" user-init-file)
+(require 'cl-lib)
+(require 're-doom-core-vars)
 (require 're-doom-bootstrap)
+(require 're-doom-deferral)
 (require 're-doom-lib)

@@ -1,75 +1,15 @@
 ;;; lib.el -*- lexical-binding: t; -*-
-(require 're-doom-deferral)
-(require 'cl-lib)
-;;-- vars
-(defgroup 're-doom)
+(add-hook 'after-init-hook (lambda () (message "Starting After Init Hook"))
+          (plist-get re-doom--hook-laziness :bootstrap))
+(add-hook 'after-init-hook (lambda () (switch-to-buffer "*Messages*"))
+          (plist-get re-doom--hook-laziness :user-max))
 
-(defconst re-doom-version "0.1.0" "This Version of re-doom")
-(defconst re-doom-profile "default" "The current profile")
+;;-- profile
 
-(defvar re-doom--active-profile-specs nil "The Specs of the active profiles, as a stack. the original profile is last.")
-(defvar re-doom--active-module-specs  nil "The Modules to activate in after-init-hook")
-(defvar re-doom-profile-spec-alist    nil "All declared profiles, which can be activated later")
+(defmacro re-doom! (&rest args)
+  " like the doom! macro, specifies a profile of modules
 
-(defvar re-doom--cmd nil)
-(defvar re-doom-module-setup-filename "config.el" "re-doom will search and load all files named this in module directories, to get package specs")
-
-(defconst re-doom--available-cmds '(batch clean sync run report stub))
-
-(defvar re-doom--module-packages (make-hash-table) "Maps Module-name -> package-specs")
-(defvar re-doom--package-declaration-failures nil)
-
-;; hook priorities
-(defconst re-doom--hook-laziness '(;; Not Lazy
-                                     :bootstrap    -99
-                                     :clean        -90
-                                     :sync         -85
-                                     :build        -80
-                                     :run          -70
-                                     :module-init  -50
-                                     :module-config 25
-                                     :user-min      50
-                                     :user-max      99
-                                     ) ;; Lazy
-  )
-
-;;-- end vars
-
-;;-- structs
-(defconst re-doom-profile-struct '(
-                                   :name                 'unquoted-symbol
-                                   :source               'string
-                                   :default              'bool
-                                   :disabled             'bool
-                                   :bootstrapper-modules 'list
-                                   :modules              'list
-                                   :constraints          '(:system :emacs-version)
-                                   :paths                '(:straight :build :modules)
-                                   :recipes              'list
-                                   :block-compile        'list
-                                   :post-activation      'fn
-                                   )
-  )
-
-(defconst re-doom-package-struct '(
-                                   :name         'unquoted-symbol
-                                   :recipe       'list-or-symbol
-                                   :after        'list
-                                   :defer        'bool
-                                   :autoloads    'list
-                                   :compile      '(byte native nil)
-                                   :constraints  '(:profile :package-version :emacs-version :module-version :commit)
-                                   :debug        '((:pre :require :post :complete) . (print break))
-                                   :pre-load     'fn
-                                   :post-load    'fn
-                                   ))
-
-;;-- end structs
-
-(defmacro re-doom! (maybe-is-default &rest args)
-  " like the doom! macro:
-
-:default?
+:default {bool}
 :profile {sym}                              : names the profile
 :package-installation {path}                : where packages are installed
 :module-locations ({paths})                 : where modules can be found
@@ -77,15 +17,14 @@
 
 :active-modules [:{groupname} {modulename}] : modules to activate for this profile
 
-
 optionals:
 :on-system {type}                : constraint
 :emacs-version {ver}             : constraint
 :cache-to  {path}                : default to ~/.cache/emacs
 :secrets {path}                  : for auth-sources
 :block-compilation (list)        : packages to not byte/eln compile
-:more-straight-recipes {recipes} : for adding to straight
-:disabled t : for making a no-op during syncing
+:recipes {recipes}               : for adding to straight
+:disabled t                      : for making a no-op during syncing
 ------
 
 Has Three main modes of running:
@@ -95,16 +34,14 @@ Has Three main modes of running:
 
 "
   (declare (indent 4))
-  (let* ((arg-alist (if (eq is-default :default) args
-                      (cons is-default args)))
-         (profile-name (symbol-name (plist-get arg-alist :profile)))
-         (disabled     (plit-get arg-alist :disabled))
+  (let* ((profile-name (symbol-name (plist-get args :profile)))
+         (disabled     (plist-get args :disabled))
+         (default      (plist-get args :default))
+         (is-interactive (not noninteractive))
          )
     ;; Handle non-interactive startup variations:
-    (when (assq profile-name re-doom-profile-spec-alist)
-           (warn
-            "Duplicated profile name, as the profile spec list is an alist, only the last profile of this name will be usable"
-            'profile profile-name))
+    (when (assq profile-name re-doom-profile-spec-list)
+           (warn "Duplicated profile name, as the profile spec list is an alist, only the last profile of this name will be usable" 'profile profile-name))
 
     (cond ((and noninteractive (eq re-doom--cmd 'batch))
            '(
@@ -112,17 +49,19 @@ Has Three main modes of running:
              ))
           ((and noninteractive (eq re-doom--cmd 'sync))
            ;; Option 1: non-interactive install packages
-           `(progn
-             ;; queue profile for bootstrapping
-             (push spec re-doom--bootstrap-queue)
-             (add-hook 'after-init-hook #'re-doom--bootstrap (plist-get re-doom--hook-laziness :bootstrap))
-             ;; load profile pincushion
-             ;; collect packages
-             ;; queue packages for install
-             (add-hook 'after-init-hook #'re-doom--sync-straight (plist-get re-doom--hook-laziness :sync))
-             ;;(when ('build in cli-args) (add-hook 'after-init-hook #'re-doom--build-packages (plist-get re-doom-hook-priorities :build)))
-             ;; TODO after install, build profile pincushion
-             ))
+           `(let ((spec (re-doom--args-to-profile-spec ,profile-name ,default ,disabled ,args)))
+              (princ "---------- Re-Doom: Sync registration\n")
+              ;; queue profile for bootstrapping
+              (push spec re-doom--bootstrap-queue)
+              (add-hook 'after-init-hook #'re-doom--bootstrap (plist-get re-doom--hook-laziness :bootstrap))
+              ;; load profile pincushion
+              ;; collect packages
+              ;; queue packages for install
+              (add-hook 'after-init-hook #'re-doom--sync (plist-get re-doom--hook-laziness :sync))
+              ;;(when ('build in cli-args) (add-hook 'after-init-hook #'re-doom--build-packages (plist-get re-doom-hook-priorities :build)))
+              ;; TODO after install, build profile pincushion
+              )
+           )
           ((and noninteractive (eq re-doom--cmd 'clean))
            `(progn
               ;; load pincushion
@@ -136,28 +75,40 @@ Has Three main modes of running:
              (add-hook 'after-init-hook #'re-doom--report-profiles (plist-get re-doom--hook-laziness :report))
              )
            )
-          ((and (not noninteractive) (not (eq re-doom-profile profile-name)))
-           ;; Option 2: interactive, wrong profile
-           ;; build module spec so it can be activated manually
-           `(progn
-              ;; build specs
-              (push specs re-doom-profile-spec-alist)
-             ))
-          ((and (not noninteractive) (eq re-doom-profile profile-name))
-           ;; Option 3: interactive, right profile
-           ;; if profile is not the set profile, no-op
-           `(progn
-
-             (add-hook 'after-init-hook #'re-doom--interactive-start-profile (plist-get re-doom--hook-laziness :run))
-             ))
+          (is-interactive
+           `(let ((spec (re-doom--args-to-profile-spec ,profile-name ,default ,disabled ,args))
+                  )
+              (message "Registering Profile: %s : %s" ,profile-name
+                       ,(or (eq re-doom-profile profile-name) (and default (equal re-doom-profile "default"))))
+              (push spec re-doom-profile-spec-list)
+              ,(if (and default (equal re-doom-profile "default"))
+                   `(setq re-doom-profile ,profile-name))
+              ,@(when (or (eq re-doom-profile profile-name) (and default (equal re-doom-profile "default")))
+                  '((add-hook 'after-init-hook #'re-doom--bootstrap      (plist-get re-doom--hook-laziness :bootstrap))
+                    (add-hook 'after-init-hook #'re-doom--core-setup     (plist-get re-doom--hook-laziness :run))
+                    (add-hook 'after-init-hook #'re-doom--start-profile  (plist-get re-doom--hook-laziness :profile-init))
+                    (add-hook 'after-init-hook #'re-doom--init-modules   (plist-get re-doom--hook-laziness :module-init))
+                    (add-hook 'after-init-hook #'re-doom--config-modules (plist-get re-doom--hook-laziness :module-config))
+                    )
+                  )
+              )
+           )
           (t (warn "Unrecognized doom-init possibility" 'interactive? noninteractive 'cmd re-doom--cmd 'profile re-doom-profile))
           )
     )
   )
+;;-- end profile
+
+;;-- module
+(defun re-doom--find-all-modules ()
+  "Search module locations for declarations"
+  )
 
 (defmacro use! (package-name &rest args)
-  ;; Declarative activation of packages
-  ;; adds spec to re-doom--module-packages
+
+  "Declarative activation of packages
+  adds spec to re-doom--module-packages
+"
   (let ((compile-sym (gensym))
         (plist-sym (gensym))
         (debug-sym (gensym))
@@ -202,13 +153,24 @@ Has Three main modes of running:
     )
   )
 
+;;-- end module
+
+;;-- package
+(defmacro install! (name)
+  "specify a profile-agnostic package to install, usable by any profile"
+  ;; TODO
+  )
+
+;;-- end package
+
+;;-- misc-commands
 (defun report! ()
   ;; todo -- generate report on modules, packages,
   ;; load order, memory usage, load time, etc
 
   )
 
-(defmacro dlog! (text &rest args)
+(defmacro log! (text &rest args)
   " A Simple, doom-less debug message when 'debug-on-error is true"
   `(when debug-on-error
      (let ((inhibit-message t))
@@ -223,13 +185,19 @@ Has Three main modes of running:
   )
 
 (defun stub-module! (group name &optional loc)
-  ;; create a stub module in a location
-  ;; defaults to wherever (dir init.el)/modules/group/name
-  ;; unless loc is provided, in which case loc/group/name is used
+  "create a stub module in a location
+  defaults to wherever (dir init.el)/modules/group/name
+  unless loc is provided, in which case loc/group/name is used"
 
+  ;; mkdir
+  ;; mk module file
   )
 
+;;-- end misc-commands
+
+;;-- utilities
 (defun re-doom--generate-autoloads (&rest args)
+
   ;; todo - autoloads generator
   )
 
@@ -240,7 +208,8 @@ Has Three main modes of running:
       (set-frame-parameter frame 'menu-bar-lines 1)))
   )
 
-(defun re-doom--module-from-path (str)
+(defun re-doom-module-from-path (str)
+  "create a (:group %s :module %s) declaration from a path string"
   (let* ((parts (split-string (expand-file-name str) "/" t))
          (relevant (member "modules" parts))
          )
@@ -251,9 +220,58 @@ Has Three main modes of running:
     )
   )
 
-;;;; Installed on after-init-hook:
+(defmacro re-doom--args-to-profile-spec (profile-name default disabled args)
+  `(list
+    :name                 ,profile-name
+    :source               (file!)
+    :default              ,default
+    :disabled             ,disabled
+    :bootstrap            ,(or (plist-get args :bootstrap) (list))
+    :modules              ,(re-doom--args-to-module-decs (memq :active-modules args))
+    :constraints          (list :system        ,(plist-get args :on-system)
+                                :emacs-version ,(plist-get args :on-emacs)
+                                )
+    :paths                (list :install ,(plist-get args :install-to)
+                                :build   ,(plist-get args :build-to)
+                                :modules ,(cons 'list (plist-get args :modules-from))
+                                )
+    :recipes              ,(plist-get args :recipes)
+    :block-compile-of     ,(plist-get args :block-compile-of)
+    :post-activation      ,(when (plist-get args :on-activation)
+                             `(lambda () ,@(plist-get args :on-activation)))
+    )
+  )
 
-(defun re-doom--interactive-start-profile ( specs )
+(defun re-doom--args-to-module-decs (lst)
+  "Convert the remaining list into a list of (:group %s :module %s :allow () :disallow ())"
+  (let ((source (cl-copy-list lst))
+        curr res)
+    (while source
+      (pcase (pop source)
+        (:active-modules nil)
+        ((and kw (pred keywordp) (guard (memq kw '(:allow :disallow))))
+         (setq curr (append curr (list kw (pop source))))
+         )
+        ((and kw (pred keywordp))
+         (when curr (push curr res) (setq curr nil))
+         (setq curr (append curr (list :group (substring (symbol-name kw) 1) :module (symbol-name (pop source)))))
+         )
+        (other
+         (message "Unknown module dec: %s" other)
+         )
+        )
+      )
+    (push curr res)
+    (list 'quote res)
+    )
+  )
+
+;;-- end utilities
+
+;;-- hooks
+;;;; Installed on after-init-hook:
+(defun re-doom--core-setup ()
+  "set core settings"
   (set-language-environment "UTF-8")
   ;; General Startup Settings
   (setq default-input-method nil
@@ -300,16 +318,28 @@ Has Three main modes of running:
     ;; todo - on mac regrab focus: (when (display-graphic-p (selected-frame)) (set-frame-parameter frame 'menu-bar-lines 1))
     )
 
+(defun re-doom--start-profile ()
+  "Start the cli specified / default profile"
+  (re-doom-add-profile re-doom-profile)
+  )
+
+(defun re-doom-add-profile (spec-name)
+  "interactively start an additional profile"
+  (interactive)
+  (message "TODO: activate spec: %s" spec-name)
+)
+
 (defun re-doom--init-modules ()
-
+  "Start the acvtive profile's modules"
+  (message "TODO: init modules")
   )
 
-(defun re-doom--sync-straight ()
-
+(defun re-doom--config-modules ()
+  "Config the active profile's modules"
+  (message "TODO: config modules")
   )
 
-(defun re-doom--clean-installation ()
+;;-- end hooks
 
-  )
 
 (provide 're-doom-lib)

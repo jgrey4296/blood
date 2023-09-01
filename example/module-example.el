@@ -23,31 +23,31 @@
 ;;; Code:
 ;;-- end header
 
-(local! "+spec-defs" "+defs" "+vars") ;; Local package files
+(local-load!! "+spec-defs" "+defs" "+vars") ;; Local package files
 (defer-load! "bindings" :after re-doom-bindings-init) ;; deferred local loading till feature
 
 (use! python-mode
       :recipe      'melpa
       :after       'blah
       :defer       t
-      :debug       '(:pre "preloading python"
-                     :post 'break
-                     :complete "python loading completed"
-                     )
+      :debug       (:pre "preloading python"
+                    :post 'break
+                    :complete "python loading completed"
+                    )
       :autoloads   '(python-mode)
       :compile     'byte
       :constraints '(:version 1.5 :profile basic :emacs (>= 28.2) :commit "264FBA")
-      :pre-load    '(
+      :pre-load     (
                      (message "Config Prior to requiring the package")
 
                      )
-      :post-load   '(
+      :post-load    (
                      (message "Config requiring the package")
+
                      )
       )
 
-(provide 'module-example)
+;; autodefined: (provide 'module-example)
 ;;; module-example.el ends here
-
 
 (re-doom--module-from-path "/Volumes/documents/github/lisp/modules/basic/example/blah/module-example.el")
