@@ -5,6 +5,8 @@
 
 (defvar defer--load-timer nil)
 
+(defvar defer--skip-loads nil)
+
 (defconst defer--load-trys 5)
 
 (defmacro file! ()
@@ -64,14 +66,16 @@ from doom."
 
 (defun start-deferrals ()
   (interactive)
-  (message "-------------------- Re-Doom: Starting Deferrals")
+  (message "-------------------- Blood: Starting Deferrals")
   (when defer--load-timer
     (error 'timer-already-exists))
   (setq defer--load-timer (run-with-idle-timer 4 0.25 #'defer--queue-pop))
   )
 
 (defmacro local-load! (filename &optional noerror)
-  `(load (file-name-concat (dir!) ,filename) ,noerror 'nomessage)
+  (unless defer--skip-loads
+    `(load (file-name-concat (dir!) ,filename) ,noerror 'nomessage)
+    )
   )
 
 (defmacro defer! (time &rest body)
@@ -112,4 +116,4 @@ from doom."
           )
   )
 
-(provide 're-doom-deferral)
+(provide 'blood-deferral)

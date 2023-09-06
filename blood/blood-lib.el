@@ -1,12 +1,7 @@
 ;;; lib.el -*- lexical-binding: t; -*-
-(add-hook 'after-init-hook (lambda () (message "Starting After Init Hook"))
-          (plist-get re-doom--hook-laziness :bootstrap))
-(add-hook 'after-init-hook (lambda () (switch-to-buffer "*Messages*"))
-          (plist-get re-doom--hook-laziness :user-max))
-
 ;;-- profile
 
-(defmacro re-doom! (&rest args)
+(defmacro blood! (&rest args)
   " like the doom! macro, specifies a profile of modules
 
 :default {bool}
@@ -40,74 +35,71 @@ Has Three main modes of running:
          (is-interactive (not noninteractive))
          )
     ;; Handle non-interactive startup variations:
-    (when (assq profile-name re-doom-profile-spec-list)
+    (when (assq profile-name blood-profile-spec-list)
            (warn "Duplicated profile name, as the profile spec list is an alist, only the last profile of this name will be usable" 'profile profile-name))
 
-    (cond ((and noninteractive (eq re-doom--cmd 'batch))
+    (cond ((and noninteractive (eq blood--cmd 'batch))
            '(
              ;; prep load-path for batch cmd's loads
              ))
-          ((and noninteractive (eq re-doom--cmd 'sync))
+          ((eq blood--cmd 'sync)
            ;; Option 1: non-interactive install packages
-           `(let ((spec (re-doom--args-to-profile-spec ,profile-name ,default ,disabled ,args)))
-              (princ "---------- Re-Doom: Sync registration\n")
+           `(let ((spec (blood--args-to-profile-spec ,profile-name ,default ,disabled ,args)))
+              (princ "---------- Blood: Sync registration\n")
               ;; queue profile for bootstrapping
-              (push spec re-doom--bootstrap-queue)
-              (add-hook 'after-init-hook #'re-doom--bootstrap (plist-get re-doom--hook-laziness :bootstrap))
+              (push spec blood--bootstrap-queue)
+              (add-hook 'after-init-hook #'blood--bootstrap (plist-get blood--hook-laziness :bootstrap))
               ;; load profile pincushion
               ;; collect packages
               ;; queue packages for install
-              (add-hook 'after-init-hook #'re-doom--sync (plist-get re-doom--hook-laziness :sync))
-              ;;(when ('build in cli-args) (add-hook 'after-init-hook #'re-doom--build-packages (plist-get re-doom-hook-priorities :build)))
+              (require 'blood-sync)
+              (add-hook 'after-init-hook #'blood-sync (plist-get blood--hook-laziness :sync))
+              ;;(when ('build in cli-args) (add-hook 'after-init-hook #'blood--build-packages (plist-get blood-hook-priorities :build)))
               ;; TODO after install, build profile pincushion
               )
            )
-          ((and noninteractive (eq re-doom--cmd 'clean))
+          ((and noninteractive (eq blood--cmd 'clean))
            `(progn
               ;; load pincushion
               ;; Queue the packages for cleaning
-              (push 're-doom--clean-queue '())
-              (add-hook 'after-init-hook #'re-doom--clean-installation (plist-get re-doom--hook-laziness :clean))
+              (push 'blood--clean-queue '())
+              (add-hook 'after-init-hook #'blood--clean-installation (plist-get blood--hook-laziness :clean))
              ))
-          ((and noninteractive (eq re-doom--cmd 'report))
+          ((and noninteractive (eq blood--cmd 'report))
            `(progn
              ;; queue this profile to be reported
-             (add-hook 'after-init-hook #'re-doom--report-profiles (plist-get re-doom--hook-laziness :report))
+             (add-hook 'after-init-hook #'blood--report-profiles (plist-get blood--hook-laziness :report))
              )
            )
           (is-interactive
-           `(let ((spec (re-doom--args-to-profile-spec ,profile-name ,default ,disabled ,args))
+           `(let ((spec (blood--args-to-profile-spec ,profile-name ,default ,disabled ,args))
                   )
-              (message "Registering Profile: %s : %s" ,profile-name
-                       ,(or (eq re-doom-profile profile-name) (and default (equal re-doom-profile "default"))))
-              (push spec re-doom-profile-spec-list)
-              ,(if (and default (equal re-doom-profile "default"))
-                   `(setq re-doom-profile ,profile-name))
-              ,@(when (or (eq re-doom-profile profile-name) (and default (equal re-doom-profile "default")))
-                  '((add-hook 'after-init-hook #'re-doom--bootstrap      (plist-get re-doom--hook-laziness :bootstrap))
-                    (add-hook 'after-init-hook #'re-doom--core-setup     (plist-get re-doom--hook-laziness :run))
-                    (add-hook 'after-init-hook #'re-doom--start-profile  (plist-get re-doom--hook-laziness :profile-init))
-                    (add-hook 'after-init-hook #'re-doom--init-modules   (plist-get re-doom--hook-laziness :module-init))
-                    (add-hook 'after-init-hook #'re-doom--config-modules (plist-get re-doom--hook-laziness :module-config))
+              (message "Registering Profile: %-10s : Active: %s" ,profile-name
+                       ,(or (eq blood-profile profile-name) (and default (equal blood-profile "default"))))
+              (push spec blood-profile-spec-list)
+              ,(if (and default (equal blood-profile "default"))
+                   `(setq blood-profile ,profile-name))
+              ,@(when (or (eq blood-profile profile-name) (and default (equal blood-profile "default")))
+                  '((add-hook 'after-init-hook #'blood--bootstrap      (plist-get blood--hook-laziness :bootstrap))
+                    (add-hook 'after-init-hook #'blood--core-setup     (plist-get blood--hook-laziness :run))
+                    (add-hook 'after-init-hook #'blood--start-profile  (plist-get blood--hook-laziness :profile-init))
+                    (add-hook 'after-init-hook #'blood--init-modules   (plist-get blood--hook-laziness :module-init))
+                    (add-hook 'after-init-hook #'blood--config-modules (plist-get blood--hook-laziness :module-config))
                     )
                   )
               )
            )
-          (t (warn "Unrecognized doom-init possibility" 'interactive? noninteractive 'cmd re-doom--cmd 'profile re-doom-profile))
+          (t (warn "Unrecognized doom-init possibility" 'interactive? noninteractive 'cmd blood--cmd 'profile blood-profile))
           )
     )
   )
 ;;-- end profile
 
 ;;-- module
-(defun re-doom--find-all-modules ()
-  "Search module locations for declarations"
-  )
-
 (defmacro use! (package-name &rest args)
 
   "Declarative activation of packages
-  adds spec to re-doom--module-packages
+  adds spec to blood--module-packages
 "
   (let ((compile-sym (gensym))
         (plist-sym (gensym))
@@ -123,18 +115,20 @@ Has Three main modes of running:
                             (''native 'native)
                             (x        'bad-value)))
             (,source-sym ,source)
-            (,module-sym (re-doom--module-from-path ,source))
+            (,module-sym (blood--module-from-path ,source))
             )
        (cond ((eq ,compile-sym 'bad-value)
               (warn "Bad Compile Value Provided in Package Spec" ,package-name ,source-sym ,compile-sym)
-              (push (list ,package-name ,@plist-sym) re-doom--package-declaration-failures))
+              (push (list ,package-name ,@plist-sym) blood--package-declaration-failures))
              ((eq (car ,module-sym) :bad-source)
               (warn "Bad Package Spec source, locate package specs in modules/{group}/{module}/config.el" ,package-name ,source-sym)
-              (push (list ,package-name ,@plist-sym) re-doom--package-declaration-failures))
+              (push (list ,package-name ,@plist-sym) blood--package-declaration-failures))
              (t
+              ;; TODO change to puthash
               (push (list
                      :name         ,package-name
                      :source       ,source
+                     :module       ,module-sym
                      :recipe       ,(or (plist-get ,plist-sym :recipe) 'default)
                      :after        (list ,@(plist-get ,plist-sym :after))
                      :defer        ,(or (plist-get ,plist-sym :defer) nil)
@@ -145,7 +139,7 @@ Has Three main modes of running:
                      :pre-load     '(lambda () ,@(plist-get args :pre-load))
                      :post-load    '(lambda () ,@(plist-get args :post-load))
                      )
-                    re-doom--module-packages
+                    blood--module-packages
                     )
               )
              )
@@ -156,6 +150,7 @@ Has Three main modes of running:
 ;;-- end module
 
 ;;-- package
+
 (defmacro install! (name)
   "specify a profile-agnostic package to install, usable by any profile"
   ;; TODO
@@ -164,6 +159,7 @@ Has Three main modes of running:
 ;;-- end package
 
 ;;-- misc-commands
+
 (defun report! ()
   ;; todo -- generate report on modules, packages,
   ;; load order, memory usage, load time, etc
@@ -196,7 +192,8 @@ Has Three main modes of running:
 ;;-- end misc-commands
 
 ;;-- utilities
-(defun re-doom--generate-autoloads (&rest args)
+
+(defun blood--generate-autoloads (&rest args)
 
   ;; todo - autoloads generator
   )
@@ -208,7 +205,7 @@ Has Three main modes of running:
       (set-frame-parameter frame 'menu-bar-lines 1)))
   )
 
-(defun re-doom-module-from-path (str)
+(defun blood-module-from-path (str)
   "create a (:group %s :module %s) declaration from a path string"
   (let* ((parts (split-string (expand-file-name str) "/" t))
          (relevant (member "modules" parts))
@@ -220,14 +217,14 @@ Has Three main modes of running:
     )
   )
 
-(defmacro re-doom--args-to-profile-spec (profile-name default disabled args)
+(defmacro blood--args-to-profile-spec (profile-name default disabled args)
   `(list
     :name                 ,profile-name
     :source               (file!)
     :default              ,default
     :disabled             ,disabled
     :bootstrap            ,(or (plist-get args :bootstrap) (list))
-    :modules              ,(re-doom--args-to-module-decs (memq :active-modules args))
+    :modules              ,(blood--args-to-module-decs (memq :active-modules args))
     :constraints          (list :system        ,(plist-get args :on-system)
                                 :emacs-version ,(plist-get args :on-emacs)
                                 )
@@ -242,7 +239,7 @@ Has Three main modes of running:
     )
   )
 
-(defun re-doom--args-to-module-decs (lst)
+(defun blood--args-to-module-decs (lst)
   "Convert the remaining list into a list of (:group %s :module %s :allow () :disallow ())"
   (let ((source (cl-copy-list lst))
         curr res)
@@ -270,7 +267,8 @@ Has Three main modes of running:
 
 ;;-- hooks
 ;;;; Installed on after-init-hook:
-(defun re-doom--core-setup ()
+
+(defun blood--core-setup ()
   "set core settings"
   (set-language-environment "UTF-8")
   ;; General Startup Settings
@@ -318,28 +316,32 @@ Has Three main modes of running:
     ;; todo - on mac regrab focus: (when (display-graphic-p (selected-frame)) (set-frame-parameter frame 'menu-bar-lines 1))
     )
 
-(defun re-doom--start-profile ()
+(defun blood--start-profile ()
   "Start the cli specified / default profile"
-  (re-doom-add-profile re-doom-profile)
+  (blood-add-profile blood-profile)
   )
 
-(defun re-doom-add-profile (spec-name)
+(defun blood-add-profile (spec-name)
   "interactively start an additional profile"
   (interactive)
   (message "TODO: activate spec: %s" spec-name)
 )
 
-(defun re-doom--init-modules ()
+(defun blood--init-modules ()
   "Start the acvtive profile's modules"
   (message "TODO: init modules")
   )
 
-(defun re-doom--config-modules ()
+(defun blood--config-modules ()
   "Config the active profile's modules"
   (message "TODO: config modules")
   )
 
 ;;-- end hooks
 
+(add-hook 'after-init-hook (lambda () (message "Starting After Init Hook"))
+          (plist-get blood--hook-laziness :bootstrap))
+(add-hook 'after-init-hook (lambda () (switch-to-buffer "*Messages*"))
+          (plist-get blood--hook-laziness :user-max))
 
-(provide 're-doom-lib)
+(provide 'blood-lib)

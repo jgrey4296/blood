@@ -1,4 +1,4 @@
-;;; re-doom-core-vars.el -*- lexical-binding: t; no-byte-compile: t; -*-
+;;; blood-core-vars.el -*- lexical-binding: t; no-byte-compile: t; -*-
 ;;-- header
 ;;
 ;; Copyright (C) 2023 John Grey
@@ -22,23 +22,19 @@
 ;;; Code:
 ;;-- end header
 
-;;-- consts
+(defgroup blood nil "Blood settings")
 
-(defconst re-doom-version                 "0.1.0" "This Version of re-doom")
+;; consts
 
+(defconst blood-version                 "0.1.0" "This Version of blood")
 
-(defconst REDOOM-PROFILE-FILE-NAME "profile.el" "re-doom will search and load all profiles in files with this name")
+(defconst BLOOD-PROFILE-FILE-PATTERN "profile\\(-.+\\)?.el" "blood will search and load all profiles in files with this name")
 
-(defconst REDOOM-MODULE-FILE-NAME  "module.el"  "re-doom will search and load all files named this in module directories, to get package specs")
+(defconst BLOOD-MODULE-FILE-PATTERN "module\\(-.+\\).el"  "blood will search and load all files named this in module directories, to get package specs")
 
-(defconst re-doom--available-cmds '(batch clean sync run report stub))
+(defconst blood--available-cmds '(batch clean sync run report stub))
 
-(defconst re-doom--bootstrap-defaults '(
-                                        #'re-doom--bootstrap-straight
-                                        #'re-doom--init-straight
-                                        ))
-
-(defconst re-doom--hook-laziness '(;; Not Lazy
+(defconst blood--hook-laziness '(;; Not Lazy
                                      :bootstrap    -99
                                      :clean        -90
                                      :sync         -85
@@ -52,39 +48,14 @@
                                      ) ;; Lazy
   )
 
-;;-- end consts
+(defconst blood--bootstrap-defaults (list
+                                       #'blood--bootstrap-straight
+                                       #'blood--bootstrap-straight-init
+                                       ))
 
-;; Customs
-
-(defgroup re-doom nil "General Redoom settings")
-
-(defcustom re-doom-cache-dir (expand-file-name "~/.config/re-doom/") "the directory to use as the emacs cache head")
-
-(defcustom re-doom-additional-bootstrappers nil "functions to run as part of the bootstrap process" :type 'list)
-
-;; Private
-
-
-(defvar re-doom--active-module-specs  nil "The Modules to activate in after-init-hook")
-
-(defvar re-doom--cmd nil)
-
-(defvar re-doom--module-packages (make-hash-table) "Maps Module-name -> package-specs")
-
-(defvar re-doom--package-declaration-failures nil)
-
-;; Public
-
-(defvar RE-DOOM-BOOTSTRAPPED nil)
-
-(defvar re-doom-profile-spec-list     nil "All declared profiles, which can be activated later")
-
-(defvar re-doom-active-profile-specs nil "The Specs of the active profiles, as a stack. the original profile is last.")
-
-(defvar re-doom-profile                 "default" "The current profile")
 ;;-- structs
 
-(defconst re-doom-profile-struct '(:name                 'unquoted-symbol
+(defconst blood-profile-struct '(:name                 'unquoted-symbol
                                    :source               'string
                                    :default              'bool
                                    :disabled             'bool
@@ -100,7 +71,7 @@
   "Definition of profile struct. Not a defstruct to make it easier to manually construct"
   )
 
-(defconst re-doom-module-declaration-struct '(
+(defconst blood-module-declaration-struct '(
                                               :group    'str|sym
                                               :module   'str|sym
                                               :allow    'list
@@ -108,7 +79,7 @@
                                               )
   )
 
-(defconst re-doom-package-struct '(
+(defconst blood-package-struct '(
                                    :name         'unquoted-symbol
                                    :recipe       'list-or-symbol
                                    :after        'list
@@ -121,12 +92,38 @@
                                    :post-load    'fn
                                    ))
 
-(defconst re-doom-macro-keywords '(:profile :default :disabled :module-from :install-to
+(defconst blood-macro-keywords '(:profile :default :disabled :module-from :install-to
                                    :build-to :active-modules :on-system :on-emacs :cache-to :secrets
                                    :block-compile-of :recipes :debug)
   )
 
 ;;-- end structs
 
-(provide 're-doom-core-vars)
-;;; re-doom-core-vars.el ends here
+;; Customs
+
+(defcustom blood-cache-dir (expand-file-name "~/.cache/blood/") "the directory to use as the emacs/straight cache head")
+
+(defcustom blood-config-dir (expand-file-name "~/.config/blood/") "directory for config files")
+
+(defcustom blood-additional-bootstrappers nil "functions to run as part of the bootstrap process" :type 'list)
+
+;; Private
+
+(defvar blood--active-module-specs  nil "The Modules to activate in after-init-hook")
+
+(defvar blood--module-packages (make-hash-table) "Maps Module-name -> package-specs")
+
+(defvar blood--package-declaration-failures nil)
+
+(defvar blood--sync-backend nil "function that takes a list of packages to install, and installs them")
+
+;; Public
+
+(defvar BLOOD-BOOTSTRAPPED nil)
+
+(defvar blood-profile-spec-list     nil "All declared profiles, which can be activated later")
+
+(defvar blood-active-profile-specs nil "The Specs of the active profiles, as a stack. the original profile is last.")
+
+(provide 'blood-core-vars)
+;;; blood-core-vars.el ends here

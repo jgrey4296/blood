@@ -5,7 +5,7 @@
 ;; user-emacs-directory
 ;; user-init-file
 ;; command-line-functions
-(message "-------------------- Re-Doom: Early Init")
+(message "-------------------- Blood: Early Init")
 (message "args: %s" command-line-args)
 
 (let (processed-cli-args
@@ -14,7 +14,8 @@
   (while command-line-args
     (pcase (pop command-line-args)
       ("--sync"
-       (setq cmd 'sync)
+       (setq cmd 'sync
+             noninteractive nil)
        ;; make non-interactive
        )
       ("--profile"
@@ -32,11 +33,10 @@
       (other (push other processed-cli-args))
       )
     )
-  (setq command-line-args (reverse processed-cli-args)
-        re-doom--cmd (or cmd 'run)
-        re-doom-profile (or profile "default")
-        )
-  (message "Redoom: (profile %s) (command %s)" re-doom-profile re-doom--cmd)
+  (defvar blood--cmd (or cmd 'run) "the startup command")
+  (defvar blood-profile (or profile "default") "The current profile")
+  (setq command-line-args (reverse processed-cli-args))
+  (message "Redoom: (profile %s) (command %s)" blood-profile blood--cmd)
   )
 
 (defconst WIN-TYPES '(cygwin windows-ms ms-dos))
@@ -45,18 +45,15 @@
 
 (defconst BSD-TYPES '(darwin berkeley-unix gnu/kfreebsd))
 
-(defconst RE-DOOM-USER-DIR-ENV-VAR "DOOMDIR")
-
+(defconst BLOOD-USER-DIR-ENV-VAR "DOOMDIR")
 
 ;; Recognize and setup debugging:
 (when (or (getenv-internal "DEBUG") init-file-debug)
   (princ "Setting Debug")
   (setq init-file-debug t
         debug-on-error  t
-        re-doom--bootstrap-call-noop t
         )
   ;; todo - load-file tracking
-
   )
 
 ;; pre-Startup Performance adjustments
@@ -87,20 +84,20 @@
                     )
       )
 
-;; Add re-doom to load path
-(unless (getenv RE-DOOM-USER-DIR-ENV-VAR)
+;; Add blood to load path
+(unless (getenv BLOOD-USER-DIR-ENV-VAR)
   (error "No Doomdir found"))
 
 (set-default-toplevel-value 'load-path
-                             (cons (getenv RE-DOOM-USER-DIR-ENV-VAR)
-                                   (cons (file-name-concat (getenv "HOME") ".emacs.d/re-doom")
+                             (cons (getenv BLOOD-USER-DIR-ENV-VAR)
+                                   (cons (file-name-concat (getenv "HOME") ".emacs.d/blood")
                                          (default-toplevel-value 'load-path))))
 
 (message "\n\nLoad Path: %s" load-path)
 (message "\n\nUser Emacs Dir: %s" user-emacs-directory)
 (message "User Init: %s" user-init-file)
 (require 'cl-lib)
-(require 're-doom-core-vars)
-(require 're-doom-bootstrap)
-(require 're-doom-deferral)
-(require 're-doom-lib)
+(require 'blood-core-vars)
+(require 'blood-bootstrap)
+(require 'blood-deferral)
+(require 'blood-lib)
