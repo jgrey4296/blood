@@ -1,5 +1,6 @@
 ;;; macros.el -*- lexical-binding: t; -*-
 ;; A Simple load queue
+(message "----- Loading Deferrals")
 
 (defvar defer--load-queue nil)
 

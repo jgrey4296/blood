@@ -29,7 +29,6 @@
 (use! python-mode
       :recipe      'melpa
       :after       'blah
-      :defer       t
       :debug       (:pre "preloading python"
                     :post 'break
                     :complete "python loading completed"
@@ -41,6 +40,12 @@
                      (message "Config Prior to requiring the package")
 
                      )
+      :advice (
+
+               )
+      :hooks (
+
+              )
       :post-load    (
                      (message "Config requiring the package")
 

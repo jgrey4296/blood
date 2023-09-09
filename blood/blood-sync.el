@@ -21,20 +21,25 @@
 ;;
 ;;; Code:
 ;;-- end header
+(message "----- Loading Sync")
+
+(defvar blood--active-module-specs  nil "The Modules to activate in after-init-hook")
+
+(defvar blood--module-packages (make-hash-table) "Maps Module-name -> package-specs")
+
+(defvar blood--package-declaration-failures nil)
 
 (defun blood-sync ()
   "Trigger the syncing of packages, "
   (princ "-------------------- Blood: Syncing")
   (unless BLOOD-BOOTSTRAPPED
+    (message "Not Bootstrapped")
     (error "Tried to sync blood without it having bootstrapped"))
 
-  (dolist (spec blood-profile-spec-list)
-    ;; get active modules
-    (blood--sync-module-specs spec)
+  (dolist (spec (hash-table-values blood-profile--declared-ht))
+    (blood-profile-start spec t)
+    (blood--sync-profile spec)
     )
-  ;; Install
-  (funcall blood--sync-backend (blood--sync-collect-package-specs))
-  ;; TODO Build if cli arg says so
   )
 
 (defun blood--sync-module-specs (spec)
@@ -53,6 +58,12 @@
 
 (defun blood--sync-collect-package-specs ()
   "flatten package specs from blood--module-packages"
+  nil
+  )
+
+(defun blood--sync-native-comp (spec)
+  "TODO"
+  nil
   )
 
 (provide 'blood-sync)
