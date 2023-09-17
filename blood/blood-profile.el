@@ -83,25 +83,29 @@
 
 (defmacro blood-profile--build-spec (profile-name default disabled args)
   "is a macro to allow expansion and checking of init.el"
-  `(list
-    :name                 ,profile-name
-    :source               (file!)
-    :default              ,default
-    :disabled             ,disabled
-    :bootstrap            ,(or (plist-get args :bootstrap) (list))
-    :modules              ,(blood-profile--build-active-modules (memq :active-modules: args))
-    :constraints          (list :system        ,(plist-get args :on-system)
-                                :emacs-version ,(plist-get args :on-emacs)
-                                )
-    :paths                (list :install ,(plist-get args :install-to)
-                                :build   ,(plist-get args :build-to)
-                                :modules ,(cons 'list (plist-get args :modules-from))
-                                )
-    :recipes              ,(plist-get args :recipes)
-    :block-compile-of     ,(plist-get args :block-compile-of)
-    :post-activation      ,(when (plist-get args :on-activation)
-                             `(lambda () ,@(plist-get args :on-activation)))
-    )
+  `(prog2
+     (glog! "Building Profile Spec")
+     (list
+      :name                 ,profile-name
+      :source               (file!)
+      :default              ,default
+      :disabled             ,disabled
+      :bootstrap            ,(or (plist-get args :bootstrap) (list))
+      :modules              ,(blood-profile--build-active-modules (memq :active-modules: args))
+      :constraints          (list :system        ,(plist-get args :on-system)
+                                  :emacs-version ,(plist-get args :on-emacs)
+                                  )
+      :paths                (list :install ,(plist-get args :install-to)
+                                  :build   ,(plist-get args :build-to)
+                                  :modules ,(cons 'list (plist-get args :modules-from))
+                                  )
+      :recipes              ,(plist-get args :recipes)
+      :block-compile-of     ,(plist-get args :block-compile-of)
+      :post-activation      ,(when (plist-get args :on-activation)
+                               `(lambda () ,@(plist-get args :on-activation)))
+      )
+     (glogx!)
+     )
   )
 
 (defun blood-profile--build-active-modules (lst)

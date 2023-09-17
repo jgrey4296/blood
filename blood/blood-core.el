@@ -67,7 +67,7 @@ Has Three main modes of running:
          (is-interactive (not noninteractive))
          )
 
-    (cond ((and noninteractive (eq blood--cmd 'batch))
+    (cond ((eq blood--cmd 'batch)
            '(
              ;; prep load-path for batch cmd's loads
              ))
@@ -85,7 +85,7 @@ Has Three main modes of running:
               ;;(when ('build in cli-args) (add-hook 'after-init-hook #'blood--build-packages (plist-get blood-hook-priorities :build)))
               ;; TODO after install, build profile pincushion
               ))
-          ((and noninteractive (eq blood--cmd 'clean))
+          ((eq blood--cmd 'clean)
            `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args)))
               (require 'blood-clean)
               (blood-profile--register spec)
@@ -94,7 +94,7 @@ Has Three main modes of running:
               (push spec blood--clean-queue)
               (add-hook 'after-init-hook #'blood--clean (plist-get blood--hook-laziness :clean))
              ))
-          ((and noninteractive (eq blood--cmd 'report))
+          ((eq blood--cmd 'report)
            `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args)))
               (blood-profile--register spec)
               (require 'blood-report)
@@ -122,7 +122,7 @@ Has Three main modes of running:
                 )
               )
            )
-          (t (warn "Unrecognized blood initialisation possibility" 'interactive? noninteractive 'cmd blood--cmd 'profile blood-profile--default))
+          (t nil)
           )
     )
   )

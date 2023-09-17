@@ -76,20 +76,22 @@
   (declare (indent defun))
   `(progn
      (cl-incf blood--log-group-level)
-     (message "%s> Blood (%s): %s" (string-join (make-list (max 0 (- 10 blood--log-group-level)) "-")) blood--log-group-level
+     (message "%s> Blood (%s): %s" (make-string blood--log-group-level ?-) blood--log-group-level
               (format ,entermsg ,@args)))
   )
 
 (defmacro glogx! ()
   `(progn (cl-decf blood--log-group-level)
+          (if (< blood--log-group-level 0)
+              (setq blood--log-group-level 0))
           ;; (message "<%s Exit (%s)" (string-join (make-list (max 0 (- 10 blood--log-group-level)) "-")) blood--log-group-level)
           )
   )
 
 (defmacro ilog! (msg &rest args)
-  `(message "%s> (%s): %s" (string-join (make-list (max 0 (- 10 blood--log-group-level)) " ")) blood--log-group-level
-    (format ,msg ,@args))
+  `(message "%s> (%s): %s" (make-string blood--log-group-level ? ) blood--log-group-level (format ,msg ,@args))
   )
+
 ;;-- end logging
 
 (provide 'blood-utils)

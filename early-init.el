@@ -1,50 +1,6 @@
-;; early-init.el -*- lexical-binding: t; -*-
+;; early-init.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
-;; Important variables, functions, and locations:
-;; startup--load-user-init-file
-;; user-emacs-directory
-;; user-init-file
-;; command-line-functions
-(message "-------------------- Blood: Early Init")
-(message "args: %s" command-line-args)
-
-;;-- arg processing
-(let (processed-cli-args
-      cmd
-      profile)
-  (while command-line-args
-    (cond ((equal "--sync" (car command-line-args))
-           (setq cmd 'sync
-                 noninteractive nil)
-           ;; make non-interactive
-           )
-          ((equal "--profile"(car command-line-args))
-           (setq profile (pop command-line-args))
-           )
-          ((equal "--profiles" (car command-line-args))
-           ;; TODO list the available profiles
-           nil
-           )
-          ((equal "--report" (car command-line-args))
-           (setq cmd 'report)
-           )
-          ((equal "--batch" (car command-line-args))
-           (setq cmd 'batch)
-           )
-          ((equal "--clean" (car command-line-args))
-           (setq cmd 'clean)
-           )
-          (t (push (car command-line-args) processed-cli-args))
-          )
-    (pop command-line-args)
-    )
-  (defvar blood--cmd (or cmd 'run) "the startup command")
-  (defvar blood-profile--default profile "The current profile")
-  (setq command-line-args (reverse processed-cli-args))
-  (message "BLOOD: (profile %s) (command %s)" blood-profile--default blood--cmd)
-  )
-
-;;-- end arg processing
+;; BLOOD early-init.
 
 (defconst WIN-TYPES '(cygwin windows-ms ms-dos))
 
@@ -53,6 +9,45 @@
 (defconst BSD-TYPES '(darwin berkeley-unix gnu/kfreebsd))
 
 (defconst BLOOD-USER-DIR-ENV-VAR "BLOODDIR")
+
+(princ "-------------------- Blood: Early Init")
+(message "args: %s" command-line-args)
+
+(defun blood--force-terminal ()
+  (select-frame (make-terminal-frame `((tty-type . "xterm"))))
+  (tty-run-terminal-initialization (selected-frame) nil t)
+  )
+
+;;-- arg processing
+;; Doing this early, so a set profile or command is usable in the init file.
+(let (processed-cli-args cmd profile)
+  (while command-line-args
+    (cond ((equal "--sync" (car command-line-args)) (setq cmd 'sync))
+          ((equal "--profile"(car command-line-args)) (setq profile (pop command-line-args)))
+          ((equal "--profiles" (car command-line-args)) (setq cmd 'profiles))
+          ((equal "--report"   (car command-line-args)) (setq cmd 'report))
+          ((equal "--batch"    (car command-line-args)) (setq cmd 'batch))
+          ((equal "--clean"    (car command-line-args)) (setq cmd 'clean))
+          ((equal "-h"         (car command-line-args)) (setq cmd 'help))
+          (t (push             (car command-line-args) processed-cli-args))
+          )
+    (pop command-line-args)
+    )
+  (defvar blood--cmd (or cmd 'run) "the startup command")
+  (defvar blood-profile--default profile "The current profile")
+  (setq command-line-args (reverse processed-cli-args)
+        noninteractive (not (eq blood--cmd 'run))
+        ;; emacs-basic-display   noninteractive
+        ;; term-file-prefix nil
+        ;; inhibit-x-resources   t
+        ;; initial-window-system nil
+        )
+  (unless noninteractive
+    (blood--force-terminal))
+  (message "BLOOD: (profile %s) (command %s) (remaining %s)" blood-profile--default blood--cmd command-line-args)
+  )
+
+;;-- end arg processing
 
 ;;-- debug startup
 ;; Recognize and setup debugging:
@@ -74,7 +69,8 @@
                                                         ;; todo - delay tty-run-terminal-initialization
                                                         ;; todo - disable tool-bar-setup
                                                         ;; todo - disable any other modes?
-      package-enable-at-startup                    nil
+      package-enable-at-startup                    nil  ;; don't use built in package.el
+      inhibit-startup-screen                       t
       auto-mode-case-fold                          nil
 
       no-native-compile                            t
@@ -87,7 +83,6 @@
       comp-files-queue nil
       native-comp-eln-load-path (list (file-name-as-directory (expand-file-name comp-native-version-dir invocation-directory)))
       )
-
 
 ;; From Doom: Stricter security defaults
 (setq gnutls-verify-error noninteractive
@@ -117,10 +112,13 @@
 ;;   (error "No blood found"))
 
 (set-default-toplevel-value 'load-path
-                            (cons (or (getenv BLOOD-USER-DIR-ENV-VAR)
-                                      (file-name-concat (getenv "HOME") ".emacs.d"))
-                                   (cons (file-name-concat (getenv "HOME") ".emacs.d/blood")
-                                         (default-toplevel-value 'load-path))))
+                            (if (getenv BLOOD-USER-DIR-ENV-VAR)
+                                (cons (getenv BLOOD-USER-DIR-ENV-VAR)
+                                      (cons (file-name-concat (getenv "HOME") ".emacs.d/blood")
+                                            (default-toplevel-value 'load-path)))
+                              (cons (file-name-concat (getenv "HOME") ".emacs.d/blood")
+                                    (default-toplevel-value 'load-path)))
+                            )
 
 ;;-- end load path setup
 
