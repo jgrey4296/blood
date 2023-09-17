@@ -21,11 +21,13 @@
 ;;
 ;;; Code:
 ;;-- end header
+(ilog! "Loading Native")
+
 
 (defun blood-native--setup ()
   (setq native-compile-target-directory (file-name-directory (expand-file-name
                                                               (file-name-concat "eln-cache"
-                                                                                (plist-get (blood-current-profile) :name)
+                                                                                (plist-get (blood-profile-current) :name)
                                                                                 comp-native-version-dir)
                                                               blood-cache-dir))
         native-comp-eln-load-path (append (list native-compile-target-directory) native-comp-eln-load-path)
@@ -44,13 +46,13 @@
         )
 
   (when init-file-debug
-    (add-hook 'native-comp-async-cu-done-functions #'(lambda (file) (message "Native Comp Success: %s -> %s" file (comp-el-to-eln-filename file))))
-    (add-hook 'native-comp-async-all-done-hook     #'(lambda () (message "All Native Compilations Complete")))
-    (advice-add 'native-compile         :before    #'(lambda (fn &optional out) (message "Native Compile: %s : %s" fn out)))
-    (advice-add 'native-compile-async   :before    #'(lambda (fls &rest args) (message "Async Native Compile: %s" fls)))
-    (advice-add 'comp-run-async-workers :before    #'(lambda () (message "Starting async compilation: %s : %s : %s" comp-files-queue comp-native-version-dir native-compile-target-directory)))
+    (add-hook 'native-comp-async-cu-done-functions #'(lambda (file) (ilog! "Native Comp Success: %s -> %s" file (comp-el-to-eln-filename file))))
+    (add-hook 'native-comp-async-all-done-hook     #'(lambda () (ilog! "All Native Compilations Complete")))
+    (advice-add 'native-compile         :before    #'(lambda (fn &optional out) (ilog! "Native Compile: %s : %s" fn out)))
+    (advice-add 'native-compile-async   :before    #'(lambda (fls &rest args) (ilog! "Async Native Compile: %s" fls)))
+    (advice-add 'comp-run-async-workers :before    #'(lambda () (ilog! "Starting async compilation: %s : %s : %s" comp-files-queue comp-native-version-dir native-compile-target-directory)))
     )
-  (message "Native Compilation Activated")
+  (ilog! "Native Compilation Activated")
 )
 
 

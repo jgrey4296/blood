@@ -24,8 +24,14 @@
 
 (defvar blood--clean-queue nil)
 
-(defun blood--clean ()
-  "TODO"
+(defun blood--clean (type &optional all)
+  "TODO clean the current profile (or if arg, all profiles) build directory
+type, as a symbol, can be:
+'elc
+'eln
+...?
+
+"
   )
 
 (provide 'blood-clean)

@@ -1,5 +1,5 @@
 ;;; lib.el -*- lexical-binding: t; -*-
-(message "----- Loading Core")
+(ilog! "Loading Core")
 (require 'blood-bootstrap)
 
 (defgroup blood nil "Blood settings")
@@ -9,22 +9,20 @@
 (defconst blood-available-cmds '(batch clean sync run report stub))
 
 (defconst blood--hook-laziness '(;; Not Lazy
-                                     :bootstrap    -99
-                                     :clean        -90
-                                     :sync         -85
-                                     :build        -80
-                                     :run          -70
-                                     :profile-init -60
-                                     :module-init  -50
-                                     :module-config 25
-                                     :user-min      50
-                                     :user-max      99
-                                     ) ;; Lazy
+                                 :cold-start   -99
+                                 :bootstrap    -95
+                                 :clean        -90
+                                 :sync         -85
+                                 :build        -80
+                                 :run          -70
+                                 :profile-init -60
+                                 :module-init  -50
+                                 :module-config 25
+                                 :user-min      50
+                                 :user-max      90
+                                 :finalize      99
+                                 ) ;; Lazy
   )
-
-(defconst BLOOD-PROFILE-FILE-PATTERN "profile\\(-.+\\)?.el" "blood will search and load all profiles in files with this name")
-
-(defconst BLOOD-MODULE-FILE-PATTERN "module\\(-.+\\).el"  "blood will search and load all files named this in module directories, to get package specs")
 
 (defcustom blood-cache-dir (expand-file-name "~/.cache/blood/") "the directory to use as the emacs/straight cache head")
 
@@ -75,18 +73,20 @@ Has Three main modes of running:
              ))
           ((eq blood--cmd 'sync)
            ;; Option 1: non-interactive install packages
-           `(let ((spec (blood--args-to-profile-spec ,profile-name ,default ,disabled ,args)))
+           `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args)))
               (blood-profile--register spec)
               ;; queue profile for bootstrapping
               (push spec blood--bootstrap-queue)
               (add-hook 'after-init-hook #'blood--bootstrap (plist-get blood--hook-laziness :bootstrap))
               (require 'blood-sync)
+              (require 'blood-modules)
               (add-hook 'after-init-hook #'blood-sync (plist-get blood--hook-laziness :sync))
+              (add-hook 'after-init-hook #'blood--core-setup     (plist-get blood--hook-laziness :run))
               ;;(when ('build in cli-args) (add-hook 'after-init-hook #'blood--build-packages (plist-get blood-hook-priorities :build)))
               ;; TODO after install, build profile pincushion
               ))
           ((and noninteractive (eq blood--cmd 'clean))
-           `(let ((spec (blood--args-to-profile-spec ,profile-name ,default ,disabled ,args)))
+           `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args)))
               (require 'blood-clean)
               (blood-profile--register spec)
               ;; load pincushion
@@ -95,28 +95,30 @@ Has Three main modes of running:
               (add-hook 'after-init-hook #'blood--clean (plist-get blood--hook-laziness :clean))
              ))
           ((and noninteractive (eq blood--cmd 'report))
-           `(let ((spec (blood--args-to-profile-spec ,profile-name ,default ,disabled ,args)))
+           `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args)))
               (blood-profile--register spec)
               (require 'blood-report)
               ;; queue this profile to be reported
               (add-hook 'after-init-hook #'blood--report (plist-get blood--hook-laziness :report))
               ))
           (is-interactive
-           `(let ((spec (blood--args-to-profile-spec ,profile-name ,default ,disabled ,args))
+           `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args))
                   )
               (blood-profile--register spec)
               (if (and ,default (null blood-profile--default))
                   (setq blood-profile--default ,profile-name))
 
               (when (equal blood-profile--default ,profile-name)
-                (message "Setting up activation hooks: %s" ,profile-name)
+                (ilog! "Setting up activation hooks: %s" ,profile-name)
                 (require 'blood--native)
+                (require 'blood-modules)
                 (add-hook 'after-init-hook #'blood--bootstrap      (plist-get blood--hook-laziness :bootstrap))
                 (add-hook 'after-init-hook #'blood--core-setup     (plist-get blood--hook-laziness :run))
                 (add-hook 'after-init-hook #'blood-profile-start   (plist-get blood--hook-laziness :profile-init))
                 (add-hook 'after-init-hook #'blood-native--setup   (+ 5 (plist-get blood--hook-laziness :profile-init)))
-                (add-hook 'after-init-hook #'blood--init-modules   (plist-get blood--hook-laziness :module-init))
-                (add-hook 'after-init-hook #'blood--config-modules (plist-get blood--hook-laziness :module-config))
+                (add-hook 'after-init-hook #'blood-modules--init   (plist-get blood--hook-laziness :module-init))
+                (add-hook 'after-init-hook #'blood-modules--config (plist-get blood--hook-laziness :module-config))
+                (add-hook 'after-init-hook #'start-deferrals       (plist-get blood--hook-laziness :finalize))
                 )
               )
            )
@@ -132,45 +134,28 @@ Has Three main modes of running:
   "Declarative activation of packages
   adds spec to blood--module-packages
 "
-  (let ((compile-sym (gensym))
-        (plist-sym (gensym))
-        (debug-sym (gensym))
-        (module-sym (gensym))
+  (let* ((debug-sym (gensym))
+        (spec-sym (gensym))
         (source-sym (gensym))
-        (source (macroexp-file-name))
+        (source (file!))
+        (id-spec (blood-modules--id-from-path source package-name))
         )
-    `(let* ((,plist-sym ',args)
-            (,compile-sym (pcase (plist-get ',plist-sym :compile)
-                            ('nil     nil)
-                            (''byte   'byte)
-                            (''native 'native)
-                            (x        'bad-value)))
-            (,source-sym ,source)
-            (,module-sym (blood--module-from-path ,source))
+
+    `(let* ((,source-sym ,source)
+            (,spec-sym (blood-modules--build-spec ,id-spec ,args))
             )
-       (cond ((eq ,compile-sym 'bad-value)
-              (warn "Bad Compile Value Provided in Package Spec" ,package-name ,source-sym ,compile-sym)
-              (push (list ,package-name ,@plist-sym) blood--package-declaration-failures))
-             ((eq (car ,module-sym) :bad-source)
+       (cond ((eq (plist-get ,spec-sym :compile) 'bad-value)
+              (warn "Bad Compile Value Provided in Package Spec" ,package-name ,source-sym ,spec-sym)
+              (push ,spec-sym blood--package-declaration-failures))
+             ((plist-get (plist-get ,spec-sym :id) :bad-source)
               (warn "Bad Package Spec source, locate package specs in modules/{group}/{module}/config.el" ,package-name ,source-sym)
-              (push (list ,package-name ,@plist-sym) blood--package-declaration-failures))
+              (push ,spec-sym blood--package-declaration-failures))
              (t
-              ;; TODO change to puthash
-              (push (list
-                     :name         ,package-name
-                     :source       ,source
-                     :module       ,module-sym
-                     :recipe       ,(or (plist-get ,plist-sym :recipe) 'default)
-                     :after        (list ,@(plist-get ,plist-sym :after))
-                     :autoloads    (list ,@(plist-get ,plist-sym :autoloads))
-                     :compile      ,compile-sym
-                     :constraints  '(:profile :package-version :emacs-version :module-version :commit)
-                     :debug        '((:pre :require :post :complete) . (print break))
-                     :pre-load     '(lambda () ,@(plist-get args :pre-load))
-                     :post-load    '(lambda () ,@(plist-get args :post-load))
-                     )
-                    blood--module-packages
-                    )
+              (push ,spec-sym
+                    (gethash (plist-get (plist-get ,spec-sym :id) :sym)
+                             blood-modules--declared-packages-ht)
+                       )
+              ,spec-sym
               )
              )
        )
@@ -182,7 +167,7 @@ Has Three main modes of running:
 ;;-- package
 
 (defmacro install! (name)
-  "specify a profile-agnostic package to install, usable by any profile"
+  "specify a profile and module -agnostic package to install, usable by any profile"
   ;; TODO
   )
 
@@ -209,7 +194,6 @@ Has Three main modes of running:
 
 ;;-- end misc-commands
 
-(defalias skulls! #'use!)
+(defalias 'skull! #'use!)
 
 (provide 'blood-core)
-

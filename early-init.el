@@ -1,4 +1,4 @@
-;;; early-init.el -*- lexical-binding: t; -*-
+;; early-init.el -*- lexical-binding: t; -*-
 
 ;; Important variables, functions, and locations:
 ;; startup--load-user-init-file
@@ -8,6 +8,7 @@
 (message "-------------------- Blood: Early Init")
 (message "args: %s" command-line-args)
 
+;;-- arg processing
 (let (processed-cli-args
       cmd
       profile)
@@ -43,14 +44,17 @@
   (message "BLOOD: (profile %s) (command %s)" blood-profile--default blood--cmd)
   )
 
+;;-- end arg processing
+
 (defconst WIN-TYPES '(cygwin windows-ms ms-dos))
 
 (defconst MAC-TYPES '(darwin))
 
 (defconst BSD-TYPES '(darwin berkeley-unix gnu/kfreebsd))
 
-(defconst BLOOD-USER-DIR-ENV-VAR "DOOMDIR")
+(defconst BLOOD-USER-DIR-ENV-VAR "BLOODDIR")
 
+;;-- debug startup
 ;; Recognize and setup debugging:
 (when (or (getenv-internal "DEBUG") init-file-debug)
   (princ "Setting Debug")
@@ -60,6 +64,9 @@
   ;; todo - load-file tracking
   )
 
+;;-- end debug startup
+
+;;-- startup vars
 ;; pre-Startup Performance adjustments
 (setq gc-cons-threshold            most-positive-fixnum ;; Don't run gc till after startup
       load-prefer-newer            noninteractive       ;; Don't check bytecode times
@@ -102,24 +109,34 @@
       server-auth-dir (expand-file-name "~/.secrets")
       )
 
+;;-- end startup vars
+
+;;-- load path setup
 ;; Add blood to load path
-(unless (getenv BLOOD-USER-DIR-ENV-VAR)
-  (error "No Doomdir found"))
+;; (unless (getenv BLOOD-USER-DIR-ENV-VAR)
+;;   (error "No blood found"))
 
 (set-default-toplevel-value 'load-path
-                             (cons (getenv BLOOD-USER-DIR-ENV-VAR)
+                            (cons (or (getenv BLOOD-USER-DIR-ENV-VAR)
+                                      (file-name-concat (getenv "HOME") ".emacs.d"))
                                    (cons (file-name-concat (getenv "HOME") ".emacs.d/blood")
                                          (default-toplevel-value 'load-path))))
+
+;;-- end load path setup
 
 (message "\n\nLoad Path: %s" load-path)
 (message  "ELN: %s" native-comp-eln-load-path)
 (message "ELN Queue: %s" comp-files-queue)
 (message "\n\nUser Emacs Dir: %s" user-emacs-directory)
 (message "User Init: %s" user-init-file)
+
+;;-- core package requires
 (require 'cl-lib)
-(require 'blood-core)
 (require 'blood-utils)
+(require 'blood-core)
 (require 'blood-hooks)
 (require 'blood-deferral)
 (require 'blood-profile)
 (require 'blood-bootstrap)
+
+;;-- end core package requires

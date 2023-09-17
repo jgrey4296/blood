@@ -21,7 +21,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(message "----- Loading Straight")
+(ilog! "Loading Straight")
 (require 'env)
 
 (defvar blood--bootstrap-straight-location "repos/straight.el" "relative path for straight to isntall into")
@@ -76,13 +76,13 @@ adapted from doom--ensure-straight
            (branch-switch (if blood--bootstrap-straight-single-branch "--single-branch" "--no-single-branch"))
            )
       (if (file-directory-p repo-dir) ;; Do nothing if straight already exists for this profile spec
-          (princ (format "-- Straight Exists: %s\n" repo-dir))
-        (princ "-- Bootstrapping straight...\n")
+          (ilog! "Straight Exists: %s" repo-dir)
+        (ilog! "Bootstrapping straight...")
         (cond ((eq 'full vc-depth)
-               (princ (format "- Cloning Full Depth Straight into: %s\n" repo-dir))
+               (ilog! "- Cloning Full Depth Straight into: %s\n" repo-dir)
                (blood--call "git" "clone" "--origin" "origin" branch-switch repo-url repo-dir))
               ((integerp vc-depth)
-               (princ (format "- Cloning Depth %s Straight into: %s\n" vc-depth repo-dir))
+               (ilog! " Cloning Depth %s Straight into: %s" vc-depth repo-dir)
                (make-directory repo-dir 'recursive)
                (let ((default-directory repo-dir))
                  (blood--call "git" "clone" "--origin" "origin"
@@ -102,7 +102,7 @@ adapted from doom--ensure-straight
 
 (defun blood--bootstrap-straight-init (spec)
   "Now that straight is bootstrapped, start it"
-  (message "-- Initializing Straight: %s" (plist-get spec :name))
+  (glog! "Initializing Straight: %s" (plist-get spec :name))
   (let* ((paths (plist-get spec :paths))
          (recipes (plist-get spec :recipes))
          (repo-dir (or (plist-get paths :install) blood--bootstrap-straight-location))
@@ -120,6 +120,7 @@ adapted from doom--ensure-straight
           straight-check-for-modifications nil
           straight-current-profile (intern (plist-get spec :name))
           straight--packages-not-to-rebuild (make-hash-table)
+          straight-cache-autoloads nil
 
           straight-disable-native-compile t
           straight-disable-autoloads t
@@ -128,7 +129,6 @@ adapted from doom--ensure-straight
           )
     (unless (alist-get profile-sym straight-profiles nil)
       (push `(,profile-sym . ,(file-name-concat profile-cache-dir "straight-lockfile.el")) straight-profiles))
-    ;; (clrhash straight--success-cache)
 
     (unless (file-directory-p (in-straight! profile-build-dir))
       (make-directory (in-straight! profile-build-dir) 'recursive))
@@ -137,6 +137,7 @@ adapted from doom--ensure-straight
     (mapc #'straight-use-recipes recipes)
     (setq blood--straight-initialised t)
     )
+  (glogx!)
   )
 
 (defun blood--bootstrap-straight-build-dir-advice (&rest segments)
@@ -146,7 +147,7 @@ in a profile specific subdirectory
 eg: emacs.d/straight/build-28.2
 ->  emacs.d/straight/build-28.2-{profile}
 "
-  (let* ((spec (blood-current-profile))
+  (let* ((spec (blood-profile-current))
          (profile-build-dir (or (plist-get (plist-get spec :paths) :build)
                                 (format "build-%s-%s" emacs-version (plist-get spec :name))))
          )
@@ -161,21 +162,26 @@ eg: emacs.d/straight/build-28.2
 
 (defun blood--sync-straight (packages)
   "call straight-usej-package on each member of the input list"
-  (message "-- Straight syncing packages: %s : %s" (plist-get (blood-current-profile) :name) (straight--build-cache-file))
-  (message "- Build Dir: %s" (straight--build-dir))
+  (glog! "Straight syncing packages: %s : %s" (plist-get (blood-profile-current) :name) (straight--build-cache-file))
+  (ilog! "Build Dir: %s" (straight--build-dir))
+  (unless (and (fboundp 'straight-use-package) (fboundp 'straight--transaction-finalize))
+    (error 'blood 'missing-straight-fns))
 
   (dolist (spec packages)
-    (let (recipe)
-      (message "- Straight installing package: %s" recipe)
-      ;; convert package specs to straight recipes
-      (straight-use-package recipe nil t)
+    (let ((package (plist-get (plist-get spec :id) :package))
+          (recipe  (plist-get spec :recipe))
+          )
+      (ilog! "Straight installing package: %s" package)
+      ;; TODO convert package specs to straight recipes
+      (cond ((eq recipe 'melpa)
+             (straight-use-package package nil)
+             )
+            (t (straight-use-package recipe nil))
+            )
       )
     )
-  ;; (let ((straight--packages-to-rebuild :all))
-    (message "Using evil in %s : %s" (plist-get (blood-current-profile) :name) straight-current-profile)
-    (straight-use-package 'evil nil nil)
-    (straight--transaction-finalize)
-    ;; )
+  (straight--transaction-finalize)
+  (glogx!)
   )
 
 (provide 'blood--straight)

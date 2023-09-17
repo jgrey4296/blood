@@ -21,7 +21,9 @@
 ;;
 ;;; Code:
 ;;-- end header
-(message "----- Loading Profile")
+(ilog! "Loading Profile Lib")
+
+(defconst BLOOD-PROFILE-FILE-PATTERN "profile\\(-.+\\)?.el" "blood will search and load all profiles in files with this name")
 
 (defvar blood-profile--declared-ht     (make-hash-table) "All declared profiles, which can be activated later")
 
@@ -36,8 +38,9 @@
 (defun blood-profile-start (&optional profile clear)
   "Start the cli specified / default profile"
   (interactive)
+  (glog! "Starting Profile")
   (when clear
-    (message "Clearing Profile Stack")
+    (ilog! "Clearing Profile Stack")
     (setq blood-profile-active-specs nil
           native-comp-eln-load-path (expand-file-name "eln-cache" blood-cache-dir)
           load-path blood--original-load-path
@@ -53,12 +56,13 @@
          )
     (if (not spec)
         (error "No Matching Spec: %s" profile)
-      (message "Activating Profile Spec: %s" (plist-get spec :name))
+      (ilog! "Activating Profile Spec: %s" (plist-get spec :name))
       (push spec blood-profile-active-specs)
       (funcall (plist-get backend :activator) spec)
       (run-hooks 'blood-profile--post-activate-hook)
       )
     )
+  (glogx!)
   )
 
 (defun blood-profile--register (spec)
@@ -68,26 +72,16 @@
     ;; Handle non-interactive startup variations:
     (when (gethash profile-name blood-profile--declared-ht)
       (warn "Duplicated profile name, as the profile spec list is an alist, only the last profile of this name will be usable" 'profile profile-name))
-    (message "Registering profile: %s" profile-name)
+    (ilog! "Registering profile: %s" profile-name)
     (puthash profile-name spec blood-profile--declared-ht)
     )
   )
 
-(defun blood--sync-profile (spec)
-  (message "\n--- Syncing profile: %s" (plist-get spec :name))
-  (let ((active-mods (blood--sync-module-specs spec)) ;; get active modules
-        (packages (blood--sync-collect-package-specs))
-        )
-    (funcall (plist-get (or (plist-get spec :backend) blood--backend-default) :sync) packages)
-    ;; TODO Build if cli arg says so
-    )
-  )
-
-(defun blood-current-profile ()
+(defun blood-profile-current ()
   (car blood-profile-active-specs)
   )
 
-(defmacro blood--args-to-profile-spec (profile-name default disabled args)
+(defmacro blood-profile--build-spec (profile-name default disabled args)
   "is a macro to allow expansion and checking of init.el"
   `(list
     :name                 ,profile-name
@@ -95,7 +89,7 @@
     :default              ,default
     :disabled             ,disabled
     :bootstrap            ,(or (plist-get args :bootstrap) (list))
-    :modules              ,(blood--args-to-module-decs (memq :active-modules args))
+    :modules              ,(blood-profile--build-active-modules (memq :active-modules: args))
     :constraints          (list :system        ,(plist-get args :on-system)
                                 :emacs-version ,(plist-get args :on-emacs)
                                 )
@@ -110,12 +104,41 @@
     )
   )
 
+(defun blood-profile--build-active-modules (lst)
+  "Convert the remaining list into a list of (:group %s :module %s :allow () :disallow ())"
+  (let ((source (cl-copy-list lst))
+        curr res)
+    (ilog! "Parsing Module List: %s" lst)
+    (while source
+      (pcase (pop source)
+        (:active-modules: nil)
+        ((and kw (pred keywordp) (guard (memq kw '(:allow :disallow))))
+         (setq curr (append curr (list kw (pop source))))
+         )
+        ((and kw (pred keywordp))
+         (when curr (push curr res) (setq curr nil))
+         (ilog! "Handling: %s" kw)
+         (setq curr (append curr (list :group (substring (symbol-name kw) 1)
+                                       :module (symbol-name (pop source))
+                                       )))
+         )
+        (other
+         (ilog! "Unknown module dec: %s" other)
+         )
+        )
+      )
+    (push curr res)
+    (ilog! "Active Modules Parsed: %s" res)
+    (list 'quote res)
+    )
+  )
+
 (defun blood-user-files! ()
-  (setq user-emacs-directory (expand-file-name (file-name-concat (plist-get (blood-current-profile) :name) "user-files") blood-cache-dir))
+  (setq user-emacs-directory (expand-file-name (file-name-concat (plist-get (blood-profile-current) :name) "user-files") blood-cache-dir))
   )
 
 (defun blood-auto-saves! ()
-  (setq auto-save-dir (expand-file-name (file-name-concat (plist-get (blood-current-profile) :name) "auto-saves") blood-cache-dir)
+  (setq auto-save-dir (expand-file-name (file-name-concat (plist-get (blood-profile-current) :name) "auto-saves") blood-cache-dir)
         auto-save-list-file-prefix (file-name-concat auto-save-dir "save-"))
   )
 

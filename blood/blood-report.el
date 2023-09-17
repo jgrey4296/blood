@@ -22,8 +22,12 @@
 ;;; Code:
 ;;-- end header
 
+(ilog! "Loading Report Lib")
+
 (defun blood-report ()
-  "TODO"
+  "TODO print a report on the current profile:
+everything in its spec (name, source, default, disabled, backend, etc)
+"
   )
 
 

@@ -1,5 +1,5 @@
 ;;; bootstrap.el -*- lexical-binding: t; -*-
-(message "----- Loading bootstrap")
+(ilog! "Loading bootstrap")
 
 (defvar BLOOD-BOOTSTRAPPED nil)
 
@@ -14,7 +14,7 @@
   "For each declared profile in the quue, bootstrap it, using blood--bootstrap-defaults
 if the profile doesn't provide its own bootstrappers.
 will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
-  (princ "-------------------- Bootstrapping\n")
+  (glog! "Bootstrapping")
   (unless blood--backend-default
     (require 'blood--straight)
     (setq blood--backend-default (list :name 'straight
@@ -31,31 +31,33 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
   (blood--bootstrap-git-check)
   (blood--bootstrap-core-paths)
   (if (not blood--bootstrap-queue)
-      (princ "- Nothing More to bootstrap")
+      (ilog! "Nothing More to bootstrap")
     (dolist (spec blood--bootstrap-queue)
-      (princ (format "-- Bootstrapping Profile: %s\n" (plist-get spec :name)))
+      (ilog! "Bootstrapping Profile: %s" (plist-get spec :name))
       (dolist (fn (or (plist-get spec :bootstrap) (plist-get blood--backend-default :bootstrap)))
-        (princ (format "- Calling: %s : %s\n" fn spec))
+        (ilog! "Calling: %s" fn)
         (funcall fn spec)
         )
       )
     (setq BLOOD-BOOTSTRAPPED t)
     )
+  (glogx!)
   )
 
 (defun blood--bootstrap-core-paths ()
   " build  "
-  (princ "-- Bootstrapping Paths\n")
+  (glog! "Bootstrapping Paths")
   (let ((cache-dir (expand-file-name  blood-cache-dir)))
     (unless (file-exists-p cache-dir)
-      (princ "- Making cache Directory")
+      (ilog! "Making cache Directory")
       (make-directory cache-dir 'recursive))
     )
+  (glogx!)
   )
 
 (defun blood--bootstrap-git-check ()
   "bootstrap or complain about git"
-  (princ "-- Checking for Git\n")
+  (glog! "Checking for Git")
   (unless (executable-find "git")
     (user-error "Git isn't present on your system. Cannot proceed."))
   (let* ((version (cdr (blood--call "git" "version")))
@@ -65,7 +67,9 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
     (if version
         (when (version< version "2.23")
           (user-error "Git %s detected! blood requires git 2.23 or newer!"
-                      version))))
+                      version)))
+    )
+  (glogx!)
   )
 
 (defun blood--bootstrap-env ()

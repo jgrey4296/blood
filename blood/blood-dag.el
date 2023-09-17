@@ -24,7 +24,13 @@
 
 (defun blood-dag ()
   "Build a DAG of all installed package dependencies
-For activation in a (todo) defined way.
+For activation of packages in set order.
+
+Order of activation only matters for module components,
+so using straight / cask etc determine dependencies of each installed package,
+insert into a graph,
+topo sort the graph.
+
 "
 
   )

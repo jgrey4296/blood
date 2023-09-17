@@ -21,12 +21,12 @@
 ;;
 ;;; Code:
 ;;-- end header
-(message "----- Loading Hooks")
+(ilog! "Loading Hooks")
 ;;;; Installed on after-init-hook:
 
 (defun blood--core-setup ()
   "set core settings"
-  (message "Setting up core Blood customisations")
+  (glog! "Setting up core Blood customisations")
   (set-language-environment "UTF-8")
   ;; General Startup Settings
   (setq default-input-method nil
@@ -70,16 +70,7 @@
   ;; todo - set auth-sources , encrypted
   ;; todo - handle customized variables
   ;; todo - on mac regrab focus: (when (display-graphic-p (selected-frame)) (set-frame-parameter frame 'menu-bar-lines 1))
-  )
-
-(defun blood--init-modules ()
-  "Start the acvtive profile's modules"
-  (message "TODO: init modules")
-  )
-
-(defun blood--config-modules ()
-  "Config the active profile's modules"
-  (message "TODO: config modules")
+  (glogx!)
   )
 
 (defun blood--generate-autoloads (&rest args)
