@@ -1,6 +1,6 @@
 ;;; example-init.el -*- lexical-binding: t; -*-
 
-(ilog! "-------------------- Starting init")
+(hlog! "init.el")
 
 ;; Profile declarations with module activations:
 (blood! :profile basic :default t
@@ -26,13 +26,15 @@
 
 (install! 'cl-lib) ;; profile-indpendent package requirement
 
-(ilog! "-------------------- Finished init")
+(ilog! "")
+(glog! "Current Variable Assignments")
 (dolist (loc '(native-comp-eln-load-path data-directory doc-directory exec-directory
 	       installation-directory invocation-directory invocation-name source-directory shared-game-score-directory))
   (ilog! "%-30s : %s" (symbol-name loc) (symbol-value loc))
   )
+(glogx!)
 
-(add-hook 'after-init-hook (lambda () (ilog! "Starting After Init Hook"))
+(add-hook 'after-init-hook (lambda () (hlog! "Init Loaded, Processing..."))
           (plist-get blood--hook-laziness :bootstrap))
 (add-hook 'after-init-hook (lambda () (switch-to-buffer "*Messages*"))
           (plist-get blood--hook-laziness :user-max))

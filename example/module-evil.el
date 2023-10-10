@@ -26,14 +26,34 @@
 ;; (local-load!! "+spec-defs" "+defs" "+vars") ;; Local package files
 ;; (defer-load! "bindings" :after re-doom-bindings-init) ;; deferred local loading till feature
 
+(local-load! "+test1")
+(defer-load! "+test2")
+
 (use! evil
       :recipe      'melpa
       :autoloads   '(evil-mode)
       :pre-load (message "Prior to loading evil")
       :advice ()
       :hooks ()
-      :post-load (
-                  (message "evil has loaded")
-                  (evil-mode)
+      :post-load ((message "evil has loaded from: %s" (dir!))
+                  (evil-mode 1)
+                  (evil-ex-define-cmd "q[uit]" #'evil-quit-all)
                   )
+      )
+
+(use! evil-escape
+      :recipe '(:host github :repo "jgrey4296/evil-escape-hook")
+      :after 'evil
+      :pre-load (
+                 (setq evil-escape-inhibit-functions nil ;; '(evil-ex-p)
+                       evil-escape-excluded-states '(normal multiedit emacs motion)
+                       evil-escape-excluded-major-modes '(neotree-mode treemacs-mode vterm-mode)
+                       evil-escape-key-sequence "jk"
+                       evil-escape-delay 0.15
+                       )
+                 )
+      :post-load (
+                  (evil-escape-mode)
+                  )
+
       )
