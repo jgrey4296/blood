@@ -22,7 +22,105 @@
 ;;; Code:
 ;;-- end header
 (require 'subr-x)
-(message "Loading Utils")
+
+(defconst WIN-TYPES '(cygwin windows-ms ms-dos))
+
+(defconst MAC-TYPES '(darwin))
+
+(defconst BSD-TYPES '(darwin berkeley-unix gnu/kfreebsd))
+
+(defconst blood--hook-laziness '(;; Not Lazy
+                         :cold-start   -99
+                                 :bootstrap    -95
+                                 :clean        -90
+                                 :sync         -85
+                                 :build        -80
+                                 :run          -70
+                                 :profile-init -60
+                                 :module-init  -50
+                                 :module-config 25
+                                 :user-min      50
+                                 :user-max      90
+                                 :finalize      99
+                                 ) ;; Lazy
+  "Standard laziness values for hooks.
+if you're lazy, you run later than others.
+use `bloody-lazy!' to convert the values
+"
+  )
+
+;;-- logging
+
+(defvar blood--log-group-level 2)
+
+(defconst blood--log-header-line "--------------------")
+
+(defconst blood--log-group-entry-line "----------")
+
+(defmacro log! (text &rest args)
+  " A Simple, debug message when 'debug-on-error is true"
+  `(let ((inhibit-message t))
+       (funcall #'message ,text ,@args)
+       )
+  )
+
+(defmacro llog! (text &rest args)
+  "A Load message"
+  `(when debug-on-error
+       (funcall #'message ,text ,@args)
+       )
+  )
+
+(defmacro dlog! (text &rest args)
+  " A Simple, debug message when 'debug-on-error is true"
+  `(when debug-on-error
+       (funcall #'message ,text ,@args)
+     )
+  )
+
+(defmacro hlog! (text &rest args)
+  "A Header Log"
+  `(message "\n%s Blood: %s %s" blood--log-header-line (format ,text,@args) blood--log-header-line)
+  )
+
+(defmacro ghlog! (entermsg &rest args)
+  "Enter a group"
+  (declare (indent defun))
+  `(progn
+     (cl-incf blood--log-group-level 2)
+     (message "%s >> Blood: %s" (make-string blood--log-group-level ?-) (format ,entermsg ,@args)))
+  )
+
+(defmacro glog! (entermsg &rest args)
+  "Enter a group"
+  (declare (indent defun))
+  `(progn
+     (cl-incf blood--log-group-level 2)
+     (message "%s >> Blood: %s" (make-string blood--log-group-level ? ) (format ,entermsg ,@args)))
+  )
+
+(defmacro glogx! (&rest rest)
+  "Exit the last group"
+  `(prog1
+       (progn ,@rest)
+     (glogxs! (format "%s <<" (make-string blood--log-group-level ? )))
+     )
+  )
+
+(defun glogxs! (&optional msg)
+  (message "%s" (or msg ""))
+  (cl-decf blood--log-group-level 2)
+  (if (< blood--log-group-level 2) (setq blood--log-group-level 2))
+  )
+
+(defmacro ilog! (msg &rest args)
+  "Indented log line"
+  `(message "%s > %s" (make-string (+ 2 blood--log-group-level) ? ) (format ,msg ,@args))
+  )
+
+;;-- end logging
+
+(llog! "Utils")
 
 (defun blood--call (prog &rest args)
   "Call a program with arguments, returns (retcode . msg)"
@@ -33,14 +131,33 @@
       )
   )
 
-(defun blood--update-loadpath ()
+(defun blood--ecall (prog &rest args)
+  "Error if the call returns non-zero"
+  (let ((result (apply 'blood--call prog args)))
+    (cond ((zerop (string-to-number (car-safe result)))
+           result
+           )
+          (t (error "Blood Call Failed: %s %s : %s" prog args result))
+           )
+    )
+  )
+
+(defun blood--expand-loadpath ()
+  "Expand the Loadpath completely"
+  (glog! "Expanding Loadpath")
   (setq load-path (append
-                   ;; TODO ELN cache
-                   ;; TODO profile build dir
+           ;; ELN cache
+                   (mapcar (lambda (x)
+                             (when (file-exists-p x)
+                               (ilog! "Expanding: %s" x)
+                               (directory-files x 'full)))
+                           native-comp-eln-load-path)
+                   ;; profile build dir
                    (directory-files blood-profile--installation-dir 'full)
                    load-path
                    )
         )
+  (glogxs!)
   )
 
 (defun inhibit! (&rest inhibited)
@@ -61,38 +178,21 @@
     )
   )
 
-;;-- logging
-(defmacro log! (text &rest args)
-  " A Simple, debug message when 'debug-on-error is true"
-  `(when debug-on-error
-     (let ((inhibit-message t))
-       (funcall #'message ,text ,@args)
-       )
-     )
+(defun blood--force-terminal ()
+  (select-frame (make-terminal-frame `((tty-type . "xterm"))))
+  (tty-run-terminal-initialization (selected-frame) nil t)
   )
 
-(defvar blood--log-group-level 0)
-(defmacro glog! (entermsg &rest args)
-  (declare (indent defun))
-  `(progn
-     (cl-incf blood--log-group-level)
-     (message "%s> Blood (%s): %s" (make-string blood--log-group-level ?-) blood--log-group-level
-              (format ,entermsg ,@args)))
+(defmacro bloody-lazy! (kw &optional mod)
+  (if (not (plist-get blood--hook-laziness kw))
+      `(error "Bad hook laziness value: %s" ,kw)
+    (+ (plist-get blood--hook-laziness kw) (or mod 0))
+    )
   )
 
-(defmacro glogx! ()
-  `(progn (cl-decf blood--log-group-level)
-          (if (< blood--log-group-level 0)
-              (setq blood--log-group-level 0))
-          ;; (message "<%s Exit (%s)" (string-join (make-list (max 0 (- 10 blood--log-group-level)) "-")) blood--log-group-level)
-          )
-  )
+;;-- Message control
 
-(defmacro ilog! (msg &rest args)
-  `(message "%s> (%s): %s" (make-string blood--log-group-level ? ) blood--log-group-level (format ,msg ,@args))
-  )
-
-;;-- end logging
+;;-- end Message control
 
 (provide 'blood-utils)
 ;;; blood-utils.el ends here

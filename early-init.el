@@ -2,21 +2,21 @@
 
 ;; BLOOD early-init.
 
-(defconst WIN-TYPES '(cygwin windows-ms ms-dos))
 
-(defconst MAC-TYPES '(darwin))
-
-(defconst BSD-TYPES '(darwin berkeley-unix gnu/kfreebsd))
-
+;;-- load path setup
+;; Add blood to load path
 (defconst BLOOD-USER-DIR-ENV-VAR "BLOODDIR")
+(set-default-toplevel-value 'load-path (append
+                                        (if (getenv BLOOD-USER-DIR-ENV-VAR) (list (getenv BLOOD-USER-DIR-ENV-VAR)))
+                                        (list (file-name-concat (getenv "HOME") ".emacs.d/blood"))
+                                        (default-toplevel-value 'load-path)))
 
-(princ "-------------------- Blood: Early Init")
-(message "args: %s" command-line-args)
+;;-- end load path setup
+(require 'cl-lib)
+(require 'blood-utils)
 
-(defun blood--force-terminal ()
-  (select-frame (make-terminal-frame `((tty-type . "xterm"))))
-  (tty-run-terminal-initialization (selected-frame) nil t)
-  )
+(hlog! "Early Init")
+(log! "CLI args: %s" command-line-args)
 
 ;;-- arg processing
 ;; Doing this early, so a set profile or command is usable in the init file.
@@ -37,14 +37,10 @@
   (defvar blood-profile--default profile "The current profile")
   (setq command-line-args (reverse processed-cli-args)
         noninteractive (not (eq blood--cmd 'run))
-        ;; emacs-basic-display   noninteractive
-        ;; term-file-prefix nil
-        ;; inhibit-x-resources   t
-        ;; initial-window-system nil
+        initial-window-system nil
+        inhibit-message (not noninteractive)
         )
-  (unless noninteractive
-    (blood--force-terminal))
-  (message "BLOOD: (profile %s) (command %s) (remaining %s)" blood-profile--default blood--cmd command-line-args)
+  (hlog! "BLOOD: (profile %s) (command %s) (remaining %s)" blood-profile--default blood--cmd command-line-args)
   )
 
 ;;-- end arg processing
@@ -52,15 +48,17 @@
 ;;-- debug startup
 ;; Recognize and setup debugging:
 (when (or (getenv-internal "DEBUG") init-file-debug)
-  (princ "Setting Debug")
+  (hlog! "Setting Debug")
   (setq init-file-debug t
         debug-on-error  t
+        noninteractive nil
         )
   ;; todo - load-file tracking
   )
 
 ;;-- end debug startup
 
+(unless noninteractive (blood--force-terminal))
 ;;-- startup vars
 ;; pre-Startup Performance adjustments
 (setq gc-cons-threshold            most-positive-fixnum ;; Don't run gc till after startup
@@ -73,16 +71,24 @@
       inhibit-startup-screen                       t
       auto-mode-case-fold                          nil
 
+      no-byte-compile                              t
       no-native-compile                            t
-      native-comp-deferred-compilation             nil
-      comp-enable-subr-trampolines                 nil
-      package-native-compile nil
-      native-comp-deferred-compilation-deny-list '(".")
+      comp-no-spawn                                t
+      native-comp-jit-compilation                         nil
+      native-comp-always-compile                          nil
+      native-comp-enable-subr-trampolines                 nil
+      package-native-compile                              nil
+      native-comp-jit-compilation-deny-list      '(".")
       native-comp-bootstrap-deny-list            '(".")
       native-comp-async-jobs-number 1
-      comp-files-queue nil
-      native-comp-eln-load-path (list (file-name-as-directory (expand-file-name comp-native-version-dir invocation-directory)))
+      comp-files-queue                nil
+      async-bytecomp-allowed-packages nil
+      native-comp-jit-compilation     nil
+      ;; native-comp-eln-load-path       nil ;;(list (file-name-as-directory (expand-file-name comp-native-version-dir invocation-directory)))
+      auto-save-list-file-prefix "~/.cache/blood/autosave/.saves-"
       )
+
+(startup-redirect-eln-cache "~/.cache/blood/eln")
 
 ;; From Doom: Stricter security defaults
 (setq gnutls-verify-error noninteractive
@@ -106,31 +112,14 @@
 
 ;;-- end startup vars
 
-;;-- load path setup
-;; Add blood to load path
-;; (unless (getenv BLOOD-USER-DIR-ENV-VAR)
-;;   (error "No blood found"))
-
-(set-default-toplevel-value 'load-path
-                            (if (getenv BLOOD-USER-DIR-ENV-VAR)
-                                (cons (getenv BLOOD-USER-DIR-ENV-VAR)
-                                      (cons (file-name-concat (getenv "HOME") ".emacs.d/blood")
-                                            (default-toplevel-value 'load-path)))
-                              (cons (file-name-concat (getenv "HOME") ".emacs.d/blood")
-                                    (default-toplevel-value 'load-path)))
-                            )
-
-;;-- end load path setup
-
-(message "\n\nLoad Path: %s" load-path)
-(message  "ELN: %s" native-comp-eln-load-path)
-(message "ELN Queue: %s" comp-files-queue)
-(message "\n\nUser Emacs Dir: %s" user-emacs-directory)
-(message "User Init: %s" user-init-file)
+(glog! "Early Init Values")
+(ilog! "Load Path: %s\n\n" load-path)
+(ilog! "ELN: %s\n" native-comp-eln-load-path)
+(ilog! "User Emacs Dir: %s" user-emacs-directory)
+(ilog! "User Init: %s" user-init-file)
+(glogx!)
 
 ;;-- core package requires
-(require 'cl-lib)
-(require 'blood-utils)
 (require 'blood-core)
 (require 'blood-hooks)
 (require 'blood-deferral)
