@@ -21,13 +21,14 @@
 ;;
 ;;; Code:
 ;;-- end header
+(llog! "Report Lib")
 
-(ilog! "Loading Report Lib")
-
-(defun blood-report ()
+(defun blood-report-h ()
   "TODO print a report on the current profile:
 everything in its spec (name, source, default, disabled, backend, etc)
 "
+  (hlog! "Report")
+
   )
 
 

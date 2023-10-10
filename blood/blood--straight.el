@@ -21,7 +21,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(ilog! "Loading Straight")
+(llog! "Straight")
 (require 'env)
 
 (defvar blood--bootstrap-straight-location "repos/straight.el" "relative path for straight to isntall into")
@@ -123,7 +123,9 @@ adapted from doom--ensure-straight
           straight-cache-autoloads nil
 
           straight-disable-native-compile t
-          straight-disable-autoloads t
+          straight-disable-compile        t
+          straight-disable-autoloads      t
+
 
           blood-profile--installation-dir (in-straight! "repos")
           )
@@ -162,7 +164,8 @@ eg: emacs.d/straight/build-28.2
 
 (defun blood--sync-straight (packages)
   "call straight-usej-package on each member of the input list"
-  (glog! "Straight syncing packages: %s : %s" (plist-get (blood-profile-current) :name) (straight--build-cache-file))
+  (ghlog! "Straight Syncing Module Packages: %s" (plist-get (blood-profile-current) :name))
+  (ilog! "Cache File: %s" (straight--build-cache-file))
   (ilog! "Build Dir: %s" (straight--build-dir))
   (unless (and (fboundp 'straight-use-package) (fboundp 'straight--transaction-finalize))
     (error 'blood 'missing-straight-fns))
@@ -176,10 +179,16 @@ eg: emacs.d/straight/build-28.2
       (cond ((eq recipe 'melpa)
              (straight-use-package package nil)
              )
+            ((and (plistp recipe) (eq (plist-get recipe :host) 'github))
+             (ilog! "Handling Github recipe")
+             (straight-use-package (append (list package :type 'git)
+                                           recipe))
+             )
             (t (straight-use-package recipe nil))
             )
       )
     )
+  (ilog! "Finalizing Straight Transaction")
   (straight--transaction-finalize)
   (glogx!)
   )

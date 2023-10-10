@@ -21,10 +21,10 @@
 ;;
 ;;; Code:
 ;;-- end header
-(ilog! "Loading Native")
+(llog! "Native")
 
-
-(defun blood-native--setup ()
+(defun blood-native--setup-h ()
+  (ghlog! "Setting up Native Compilation")
   (setq native-compile-target-directory (file-name-directory (expand-file-name
                                                               (file-name-concat "eln-cache"
                                                                                 (plist-get (blood-profile-current) :name)
@@ -32,29 +32,65 @@
                                                               blood-cache-dir))
         native-comp-eln-load-path (append (list native-compile-target-directory) native-comp-eln-load-path)
 
-        no-native-compile nil
-        native-comp-deferred-compilation             t
-        comp-enable-subr-trampolines                 t
-        package-native-compile t
-        native-comp-async-jobs-number 1
+        native-comp-jit-compilation                         t
+        native-comp-enable-subr-trampolines                 t
+        native-comp-async-query-on-exit                     t
+
+        no-native-compile                          nil
+        no-byte-compile                            nil
+        comp-no-spawn                              nil
+        async-bytecomp-allowed-packages            nil
+
+        native-comp-always-compile                 nil
+        native-comp-bootstrap-deny-list            nil
+        native-comp-compiler-options               nil
+        native-comp-jit-compilation-deny-list      (list "/with-editor\\.el\\'" "/vterm\\.el\\'" "/evil-collection-vterm\\.el\\'" "/emacs-jupyter.*\\.el\\'")
+        native-comp-async-jobs-number   1
+        native-comp-verbose             0
+        native-comp-debug               0
+        native-comp-speed               2
         native-comp-async-report-warnings-errors init-file-debug
         native-comp-warning-on-missing-source    init-file-debug
-
-        native-comp-deferred-compilation-deny-list nil
-        native-comp-bootstrap-deny-list            nil
-        native-comp-verbose 0
         )
 
   (when init-file-debug
-    (add-hook 'native-comp-async-cu-done-functions #'(lambda (file) (ilog! "Native Comp Success: %s -> %s" file (comp-el-to-eln-filename file))))
-    (add-hook 'native-comp-async-all-done-hook     #'(lambda () (ilog! "All Native Compilations Complete")))
-    (advice-add 'native-compile         :before    #'(lambda (fn &optional out) (ilog! "Native Compile: %s : %s" fn out)))
-    (advice-add 'native-compile-async   :before    #'(lambda (fls &rest args) (ilog! "Async Native Compile: %s" fls)))
-    (advice-add 'comp-run-async-workers :before    #'(lambda () (ilog! "Starting async compilation: %s : %s : %s" comp-files-queue comp-native-version-dir native-compile-target-directory)))
+    (add-hook 'native-comp-async-cu-done-functions #'(lambda (file) (log! "Native Comp Success: %s -> %s" file (comp-el-to-eln-filename file))))
+    (add-hook 'native-comp-async-all-done-hook     #'(lambda () (log! "All Native Compilations Complete")))
+    (advice-add 'native-compile         :before    #'(lambda (fn &optional out) (log! "Native Compile: %s : %s" fn out)))
+    (advice-add 'native-compile-async   :before    #'(lambda (fls &rest args) (log! "Async Native Compile: %s" fls)))
+    (advice-add 'comp-run-async-workers :before    #'(lambda () (log! "Starting async compilation: %s : %s : %s" comp-files-queue comp-native-version-dir native-compile-target-directory)))
     )
-  (ilog! "Native Compilation Activated")
-)
+  ;; (add-hook 'kill-emacs-query-functions #'blood-native--clear-compilation-queue-on-exit)
+  ;; (add-hook 'kill-emacs-hook #'blood-native--noninteractive-clear-compilation-queue)
 
+  (ilog! "Native Compilation Activated")
+  (ilog! "Deny Lists have been cleared")
+  (ilog! "native-comp-eln-load-path: %s" native-comp-eln-load-path)
+  (ilog! "native-comp-async-jobs-number: %s" native-comp-async-jobs-number)
+  (glogx!)
+  )
+
+(defun blood-native--clear-compilation-queue-on-exit ()
+  " "
+  (let ((read-answer-short 'auto))
+    (pcase (read-answer (format "There are %s entries remaining in the comp-files-queue, what do you want to do?" (length comp-files-queue))
+                        '(("clear" ?x "Clear the Queue")
+                          ("cancel" ?c "Cancel the quit command")
+                          ("ignore" ?i "Ignore and quit anyway")
+                          )
+                        )
+      ("clear" (setq comp-files-queue nil) t)
+      ("cancel" nil)
+      ("ignore" t)
+      )
+    )
+  )
+
+(defun blood-native--noninteractive-clear-compilation-queue ()
+  (if noninteractive
+      (setq comp-files-queue nil)
+      )
+  )
 
 (provide 'blood--native)
 ;;; blood--native.el ends here

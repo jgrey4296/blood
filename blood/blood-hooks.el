@@ -21,17 +21,18 @@
 ;;
 ;;; Code:
 ;;-- end header
-(ilog! "Loading Hooks")
+(llog! "Hooks")
 ;;;; Installed on after-init-hook:
 
-(defun blood--core-setup ()
+(defun blood--setup-default-h ()
   "set core settings"
-  (glog! "Setting up core Blood customisations")
+  (ghlog! "Setting up core Blood customisations")
   (set-language-environment "UTF-8")
   ;; General Startup Settings
   (setq default-input-method nil
         inhibit-startup-screen                       t ;; Startup Control
         inhibit-startup-echo-area-message            "Blood for the Blood God"
+        inhibit-message nil
 
         jka-compr-verbose                            init-file-debug
         ;; Garbage collection
@@ -75,7 +76,9 @@
 
 (defun blood--generate-autoloads (&rest args)
   ;; todo - autoloads generator
+  (ghlog! "Generating Autoloads")
   nil
+  (glogx!)
   )
 
 (defun doom-restore-menu-bar-in-gui-frames-h (&optional frame)

@@ -21,7 +21,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(ilog! "Loading Profile Lib")
+(llog! "Profile Lib")
 
 (defconst BLOOD-PROFILE-FILE-PATTERN "profile\\(-.+\\)?.el" "blood will search and load all profiles in files with this name")
 
@@ -35,14 +35,13 @@
 
 (defvar blood-profile--post-activate-hook nil "Functions to run when activating a profile")
 
-(defun blood-profile-start (&optional profile clear)
+(defun blood-profile-start-h (&optional profile clear quiet)
   "Start the cli specified / default profile"
   (interactive)
-  (glog! "Starting Profile")
   (when clear
     (ilog! "Clearing Profile Stack")
     (setq blood-profile-active-specs nil
-          native-comp-eln-load-path (expand-file-name "eln-cache" blood-cache-dir)
+  native-comp-eln-load-path (expand-file-name "eln-cache" blood-cache-dir)
           load-path blood--original-load-path
           )
     (run-hooks 'blood-profile--clear-hook)
@@ -54,15 +53,13 @@
          (spec (if (stringp profile) (gethash (intern profile) blood-profile--declared-ht) profile))
          (backend (or (plist-get spec :backend) blood--backend-default))
          )
-    (if (not spec)
-        (error "No Matching Spec: %s" profile)
-      (ilog! "Activating Profile Spec: %s" (plist-get spec :name))
-      (push spec blood-profile-active-specs)
-      (funcall (plist-get backend :activator) spec)
-      (run-hooks 'blood-profile--post-activate-hook)
-      )
+    (unless spec (error "No Matching Spec: %s" profile))
+    (unless quiet (ghlog! "Activating Profile Spec: %s" (plist-get spec :name)))
+    (push spec blood-profile-active-specs)
+    (funcall (plist-get backend :activator) spec)
+    (run-hooks 'blood-profile--post-activate-hook)
+    (unless quiet (glogx!))
     )
-  (glogx!)
   )
 
 (defun blood-profile--register (spec)
@@ -83,8 +80,8 @@
 
 (defmacro blood-profile--build-spec (profile-name default disabled args)
   "is a macro to allow expansion and checking of init.el"
-  `(prog2
-     (glog! "Building Profile Spec")
+  `(progn
+     (ilog! "Collecting Profile Spec Struct")
      (list
       :name                 ,profile-name
       :source               (file!)
@@ -104,7 +101,6 @@
       :post-activation      ,(when (plist-get args :on-activation)
                                `(lambda () ,@(plist-get args :on-activation)))
       )
-     (glogx!)
      )
   )
 
@@ -112,7 +108,7 @@
   "Convert the remaining list into a list of (:group %s :module %s :allow () :disallow ())"
   (let ((source (cl-copy-list lst))
         curr res)
-    (ilog! "Parsing Module List: %s" lst)
+    (glog! "Parsing Module Lists: %s" lst)
     (while source
       (pcase (pop source)
         (:active-modules: nil)
@@ -121,19 +117,19 @@
          )
         ((and kw (pred keywordp))
          (when curr (push curr res) (setq curr nil))
-         (ilog! "Handling: %s" kw)
+         (ilog! "Handling Module: %s" kw)
          (setq curr (append curr (list :group (substring (symbol-name kw) 1)
                                        :module (symbol-name (pop source))
                                        )))
          )
         (other
-         (ilog! "Unknown module dec: %s" other)
+         (ilog! "Unknown module declaration: %s" other)
          )
         )
       )
     (push curr res)
     (ilog! "Active Modules Parsed: %s" res)
-    (list 'quote res)
+    (glogx! (list 'quote res))
     )
   )
 

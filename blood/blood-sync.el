@@ -21,7 +21,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(ilog! "Loading Sync")
+(llog! "Sync")
 
 (defvar blood--active-module-specs  nil "The Modules to activate in after-init-hook")
 
@@ -31,36 +31,39 @@
 
 (defcustom blood-sync-module-find-fn #'blood-sync--find-with-fd "The function used for searching for `Blood-module-file-pattern` module files, takes two arguments: the search root, and the profile source location to `expand-file-name` it against''" :type 'symbol)
 
-(defun blood-sync ()
+(defun blood-sync-h ()
   "Trigger the syncing of packages, "
-  (glog! "Syncing")
+  (hlog! "Syncing")
   (unless BLOOD-BOOTSTRAPPED
     (ilog! "Not Bootstrapped")
     (error "Tried to sync blood without it having bootstrapped"))
 
-  (ilog! "Syncing Each Profile")
+  (ilog! "Syncing Profiles: %s" (length (hash-table-values blood-profile--declared-ht)))
   (dolist (spec (hash-table-values blood-profile--declared-ht))
-    (blood-profile-start spec t)
+    (ghlog! "Syncing Profile: %s" (plist-get spec :name))
+    (blood-profile-start-h spec t t)
     (blood-sync--profile spec)
+    (glogx!)
     )
-  (glogx!)
+  )
+
+(defun blood-sync--complete-h ()
+  (hlog! "Sync Complete")
   )
 
 (defun blood-sync--profile (spec)
   "For a profile, get its active modules, find the components of those modules, and sync those components
 using the profile's backend"
-  (glog! "Syncing profile: %s" (plist-get spec :name))
   (let* ((mod-files (blood-sync--module-specs spec)) ;; get active modules
          (packages  (blood-sync--collect-package-specs mod-files))
          (sync-fn (plist-get (or (plist-get spec :backend) blood--backend-default) :sync))
          )
     ;; pass the specs to the backend to install
     (funcall sync-fn packages)
-    ;; TODO cache the files to load for interactive
-    ;; TODO Build if cli arg says so
-    ;; TODO build autoloads
+    (ilog! "TODO: cache files for interactive use")
+    (ilog! "TODO: build if cli arg says so")
+    (ilog! "TODO: build autoloads")
     (ilog! "Spec Synced: %s" (plist-get spec :name))
-    (glogx!)
     )
   )
 
@@ -70,32 +73,32 @@ using the profile's backend"
   (let* ((module-locs (plist-get (plist-get spec :paths) :modules)) ;; list of paths
          (modules (plist-get spec :modules)) ;; declared active modules
          (module-symbols (mapcar #'(lambda (x) (blood-modules--sym-from-parts (plist-get x :group)
-                                                                              (plist-get x :module)))
-                                 modules))
+                                                                                     (plist-get x :module)))
+                                        modules))
          (source (plist-get spec :source))
          found-modules
+         active-modules
          )
-
     ;; Find the module definitions
     (dolist (base module-locs)
       (let ((result (funcall blood-sync-module-find-fn base (file-name-directory source))))
         (if (zerop (string-to-number (car-safe result)))
-            (setq found-modules (append (mapcar #'file-truename (split-string (cdr result) "\n" t " +")) found-modules)))
+            (setq found-modules (append (mapcar #'file-truename (split-string (cdr result) "\n" t " +")) found-modules))
+          (warn "Searching in %s failed: %s" base result)
+          )
         )
       )
-    (ilog! "Active Module Symbols: %s" module-symbols)
     (ilog! "Module Search Found: %s " found-modules)
-    (prog1
-        ;; filter for ones that are active
-        (cl-remove nil (mapcar #'(lambda (x)
-                                   (let* ((dir-parts (reverse (split-string x "/" t " +")))
-                                          (sym (blood-modules--sym-from-parts (caddr dir-parts)
-                                                                              (cadr dir-parts)))
-                                          (in-active-modules (memq sym module-symbols))
-                                          )
-                                     (ilog! "Testing Module: %s" sym)
-                                     (if in-active-modules x nil)))
-                               found-modules))
+    (setq active-modules (cl-remove nil (mapcar #'(lambda (x)
+                                                    (let* ((dir-parts (reverse (split-string x "/" t " +")))
+                                                           (sym (blood-modules--sym-from-parts (caddr dir-parts)
+                                                                                               (cadr dir-parts)))
+                                                           (in-active-modules (memq sym module-symbols))
+                                                           )
+                                                      (if in-active-modules x nil)))
+                                                found-modules)))
+    (ilog! "Found Modules which are active in profile: %s" active-modules)
+    (prog1 active-modules
       (glogx!)
       )
     )
@@ -105,12 +108,12 @@ using the profile's backend"
   "given a list of module component file paths, load them -> list of package spec structs (see blood-modules--build-spec)"
   (glog! "Collecting Package Specs from discovered modules: %s" files)
   (clrhash blood-modules--declared-packages-ht)
-  (let ((defer--skip-loads (not allow-loads)))
+  (let ((blood-defer--skip-loads (not allow-loads)))
     (dolist (file files)
       ;; Load module definition, suppressing any deferred loads,
       ;; but adding package declarations to `blood-modules--declared-packages-ht`
-      (ilog! "Loading: %s" file)
-      (load file)
+      (llog! "%s (package collection)" file)
+      (load file nil t)
       )
     (prog1 (apply #'append (hash-table-values blood-modules--declared-packages-ht))
       (progn
@@ -129,7 +132,14 @@ using the profile's backend"
 
 (defun blood-sync--find-with-fd (base source)
   (ilog! "Searching: %s" (expand-file-name base source))
-  (blood--call "fd" "-i" BLOOD-MODULE-FILE-PATTERN (expand-file-name base source))
+  (cond ((executable-find "fdfind")
+ (blood--call "fdfind" "-i" BLOOD-MODULE-FILE-PATTERN--FD (expand-file-name base source))
+         )
+        ((executbale-find "fd")
+         (blood--call "fd" "-i" BLOOD-MODULE-FILE-PATTERN--FD (expand-file-name base source))
+         )
+        (t (error "No usable fd found"))
+        )
   )
 
 (provide 'blood-sync)

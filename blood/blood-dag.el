@@ -21,8 +21,16 @@
 ;;
 ;;; Code:
 ;;-- end header
+(llog! "Dag")
 
-(defun blood-dag ()
+(defconst blood-dag--root "__blood_root")
+(defvar blood-dag--graph (let ((table (make-hash-table :test 'equal)))
+                   (puthash blood-dag--root nil table)
+                          table
+                          )
+  "A DAG of Packages. __blood_root is the root which everything gets connected to")
+
+(defun blood-dag-h ()
   "Build a DAG of all installed package dependencies
 For activation of packages in set order.
 
@@ -32,9 +40,33 @@ insert into a graph,
 topo sort the graph.
 
 "
-
+  (hlog! "Building Dag")
+  (unless blood--straight-initialised (error "Can't build Packages DAG without straight"))
+  (straight--load-build-cache)
+  (let ((repos (mapcar #'(lambda (x) (symbol-name x))  straight-recipe-repositories)))
+    (dolist (package (hash-table-keys straight--build-cache))
+      (let ((deps (nth 1 (gethash package straight--build-cache))))
+        (cond ((seq-contains-p repos package) nil)
+              ((and (eq 1 (length deps)) (string-equal (car deps) "emacs"))
+               (puthash package blood-dag--root blood-dag--graph)
+               )
+              (t
+               (dolist (dep deps)
+                 (unless (string-equal dep "emacs")
+                   (push dep (gethash package blood-dag--graph))
+                   )
+                 )
+               )
+              )
+        )
+      )
+    )
+  (dolist (package (hash-table-keys blood-dag--graph))
+    (ilog! "%s -> %s" package (gethash package blood-dag--graph))
+    )
+  ;; calculate the ideal load order
+  ;; write the order
   )
-
 
 (provide 'blood-dag)
 ;;; blood-dag.el ends here

@@ -1,5 +1,5 @@
 ;;; lib.el -*- lexical-binding: t; -*-
-(ilog! "Loading Core")
+(llog! "Core")
 (require 'blood-bootstrap)
 
 (defgroup blood nil "Blood settings")
@@ -8,21 +8,6 @@
 
 (defconst blood-available-cmds '(batch clean sync run report stub))
 
-(defconst blood--hook-laziness '(;; Not Lazy
-                                 :cold-start   -99
-                                 :bootstrap    -95
-                                 :clean        -90
-                                 :sync         -85
-                                 :build        -80
-                                 :run          -70
-                                 :profile-init -60
-                                 :module-init  -50
-                                 :module-config 25
-                                 :user-min      50
-                                 :user-max      90
-                                 :finalize      99
-                                 ) ;; Lazy
-  )
 
 (defcustom blood-cache-dir (expand-file-name "~/.cache/blood/") "the directory to use as the emacs/straight cache head")
 
@@ -77,13 +62,16 @@ Has Three main modes of running:
               (blood-profile--register spec)
               ;; queue profile for bootstrapping
               (push spec blood--bootstrap-queue)
-              (add-hook 'after-init-hook #'blood--bootstrap (plist-get blood--hook-laziness :bootstrap))
+              (add-hook 'after-init-hook #'blood-bootstrap-h (bloody-lazy! :bootstrap))
               (require 'blood-sync)
               (require 'blood-modules)
-              (add-hook 'after-init-hook #'blood-sync (plist-get blood--hook-laziness :sync))
-              (add-hook 'after-init-hook #'blood--core-setup     (plist-get blood--hook-laziness :run))
+              (require 'blood-dag)
+              (add-hook 'after-init-hook #'blood-sync-h               (bloody-lazy! :sync))
+              (add-hook 'after-init-hook #'blood--setup-default-h     (bloody-lazy! :run))
+              (add-hook 'after-init-hook #'blood-sync--complete-h     (bloody-lazy! :finalize))
+              (add-hook 'after-init-hook #'blood-dag-h                (bloody-lazy! :finalize -1))
               ;;(when ('build in cli-args) (add-hook 'after-init-hook #'blood--build-packages (plist-get blood-hook-priorities :build)))
-              ;; TODO after install, build profile pincushion
+              (add-hook 'after-init-hook #'(lambda () (ilog! "TODO: build version report")) (bloody-lazy! :build))
               ))
           ((eq blood--cmd 'clean)
            `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args)))
@@ -92,14 +80,14 @@ Has Three main modes of running:
               ;; load pincushion
               ;; Queue the packages for cleaning
               (push spec blood--clean-queue)
-              (add-hook 'after-init-hook #'blood--clean (plist-get blood--hook-laziness :clean))
+              (add-hook 'after-init-hook #'blood--clean-h (bloody-lazy! :clean))
              ))
           ((eq blood--cmd 'report)
            `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args)))
               (blood-profile--register spec)
               (require 'blood-report)
               ;; queue this profile to be reported
-              (add-hook 'after-init-hook #'blood--report (plist-get blood--hook-laziness :report))
+              (add-hook 'after-init-hook #'blood--report-h (bloody-lazy! :report))
               ))
           (is-interactive
            `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args))
@@ -112,13 +100,15 @@ Has Three main modes of running:
                 (ilog! "Setting up activation hooks: %s" ,profile-name)
                 (require 'blood--native)
                 (require 'blood-modules)
-                (add-hook 'after-init-hook #'blood--bootstrap      (plist-get blood--hook-laziness :bootstrap))
-                (add-hook 'after-init-hook #'blood--core-setup     (plist-get blood--hook-laziness :run))
-                (add-hook 'after-init-hook #'blood-profile-start   (plist-get blood--hook-laziness :profile-init))
-                (add-hook 'after-init-hook #'blood-native--setup   (+ 5 (plist-get blood--hook-laziness :profile-init)))
-                (add-hook 'after-init-hook #'blood-modules--init   (plist-get blood--hook-laziness :module-init))
-                (add-hook 'after-init-hook #'blood-modules--config (plist-get blood--hook-laziness :module-config))
-                (add-hook 'after-init-hook #'start-deferrals       (plist-get blood--hook-laziness :finalize))
+                (require 'blood-dag)
+                (add-hook 'after-init-hook #'blood-bootstrap-h                     (bloody-lazy! :bootstrap))
+                (add-hook 'after-init-hook #'blood--setup-default-h                (bloody-lazy! :run))
+                (add-hook 'after-init-hook #'blood-profile-start-h                 (bloody-lazy! :profile-init))
+                (add-hook 'after-init-hook #'blood-native--setup-h                 (bloody-lazy! :profile-init 5))
+                (add-hook 'after-init-hook #'blood-modules--init-packages-h        (bloody-lazy! :module-init))
+                (add-hook 'after-init-hook #'blood-modules--config-packages-h      (bloody-lazy! :module-config))
+                (add-hook 'after-init-hook #'blood-defer--start-h                  (bloody-lazy! :finalize))
+                (add-hook 'after-init-hook #'blood-dag-h                           (bloody-lazy! :finalize))
                 )
               )
            )
@@ -187,7 +177,7 @@ Has Three main modes of running:
   "create a stub module in a location
   defaults to wherever (dir init.el)/modules/group/name
   unless loc is provided, in which case loc/group/name is used"
-
+  (warn "TODO")
   ;; mkdir
   ;; mk module file
   )

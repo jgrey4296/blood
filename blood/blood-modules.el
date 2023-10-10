@@ -21,10 +21,10 @@
 ;;
 ;;; Code:
 ;;-- end header
-(ilog! "Loading Modules lib")
+(llog! "Modules lib")
 (require 'blood-sync)
 
-(defconst BLOOD-MODULE-FILE-PATTERN ".*\(m-.+\|module\|module-.+\).el"  "blood will search and load all files named this in module directories, to get package specs")
+(defconst BLOOD-MODULE-FILE-PATTERN--FD ".*(m-.+|module|module-.+).el$"  "blood will search and load all files named this in module directories, to get package specs")
 
 (defvar blood-modules--declared-packages-ht (make-hash-table) "Registered module packages. modstr -> list")
 
@@ -85,36 +85,38 @@
     )
   )
 
-(defun blood-modules--init ()
-  "Start the acvtive profile's modules"
-  (glog! "TODO: init modules")
-  (blood--update-loadpath)
-  ;; TODO Ensure load path is setup
+(defun blood-modules--init-packages-h ()
+  "Start the activeprofile's modules"
+  (blood--expand-loadpath)
+  (ghlog! "Initalizing Packages")
   (let* ((profile (blood-profile-current))
-        (mod-files (blood-sync--module-specs profile)) ;; get active modules
-        (packages  (blood-sync--collect-package-specs mod-files 'allow))
+ (mod-files (blood-sync--module-specs profile)) ;; get active modules
+         (packages  (blood-sync--collect-package-specs mod-files 'allow))
         )
+    (ilog! "Found %s packages to initialize" (length packages))
     (dolist (package-spec packages)
-      (ilog! "Initialising: %s" (plist-get (plist-get package-spec :id) :package))
+      (ghlog! "Initialising: %s" (plist-get (plist-get package-spec :id) :package))
       (funcall (plist-get package-spec :pre-load))
       ;; TODO straight--load-package-autoloads
       ;; TODO setup advice
       ;; TODO setup hooks
+      (glogxs!)
       )
     )
   (glogx!)
   )
 
-(defun blood-modules--config ()
+(defun blood-modules--config-packages-h ()
   "Config the active profile's modules"
-  (glog! "TODO: config modules")
   (let ((packages  (apply #'append (hash-table-values blood-modules--declared-packages-ht)))
         )
+    (ghlog! "Configuring %s Packages" (length packages))
+    ;; Load the dag calculated order
     (dolist (package-spec packages)
-      (ilog! "Loading: %s" (plist-get (plist-get package-spec :id) :package))
-      ;; TODO wrap with eval-after-load if necessary
+      (ghlog! "Loading: %s" (plist-get (plist-get package-spec :id) :package))
       (require (plist-get (plist-get package-spec :id) :package))
       (funcall (plist-get package-spec :post-load))
+      (glogxs!)
       )
     )
   (glogx!)

@@ -1,5 +1,5 @@
 ;;; bootstrap.el -*- lexical-binding: t; -*-
-(ilog! "Loading bootstrap")
+(llog! "Bootstrap")
 
 (defvar BLOOD-BOOTSTRAPPED nil)
 
@@ -10,11 +10,11 @@
 (defcustom blood--backend-default nil
   "The plist describing the default backend to use. comprised of :name, :require, :bootstrap and :actviator ")
 
-(defun blood--bootstrap ()
+(defun blood-bootstrap-h ()
   "For each declared profile in the quue, bootstrap it, using blood--bootstrap-defaults
 if the profile doesn't provide its own bootstrappers.
 will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
-  (glog! "Bootstrapping")
+  (hlog! "Bootstrapping")
   (unless blood--backend-default
     (require 'blood--straight)
     (setq blood--backend-default (list :name 'straight
@@ -41,12 +41,11 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
       )
     (setq BLOOD-BOOTSTRAPPED t)
     )
-  (glogx!)
   )
 
 (defun blood--bootstrap-core-paths ()
-  " build  "
-  (glog! "Bootstrapping Paths")
+  "Make the core paths needed for running blood"
+  (ghlog! "Bootstrapping Paths")
   (let ((cache-dir (expand-file-name  blood-cache-dir)))
     (unless (file-exists-p cache-dir)
       (ilog! "Making cache Directory")
@@ -57,7 +56,7 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
 
 (defun blood--bootstrap-git-check ()
   "bootstrap or complain about git"
-  (glog! "Checking for Git")
+  (ghlog! "Checking for Git")
   (unless (executable-find "git")
     (user-error "Git isn't present on your system. Cannot proceed."))
   (let* ((version (cdr (blood--call "git" "version")))
@@ -73,7 +72,9 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
   )
 
 (defun blood--bootstrap-env ()
-  ;; TODO
+  (ghlog! "Bootstrapping Env")
+
+  (glogx!)
   )
 
 (provide 'blood-bootstrap)

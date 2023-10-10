@@ -21,10 +21,10 @@
 ;;
 ;;; Code:
 ;;-- end header
-
+(llog! "Clean")
 (defvar blood--clean-queue nil)
 
-(defun blood--clean (type &optional all)
+(defun blood--clean-h (type &optional all)
   "TODO clean the current profile (or if arg, all profiles) build directory
 type, as a symbol, can be:
 'elc
@@ -32,6 +32,7 @@ type, as a symbol, can be:
 ...?
 
 "
+  (hlog! "Cleaning")
   )
 
 (provide 'blood-clean)
