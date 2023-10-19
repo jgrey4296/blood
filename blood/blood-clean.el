@@ -24,15 +24,26 @@
 (llog! "Clean")
 (defvar blood--clean-queue nil)
 
-(defun blood--clean-h (type &optional all)
-  "TODO clean the current profile (or if arg, all profiles) build directory
-type, as a symbol, can be:
-'elc
-'eln
-...?
+(defun blood--clean-h ()
+  "clean the current profile (or if arg, all profiles) build directory
+type, as a symbol, can be: 'elc 'eln ...?
 
 "
   (hlog! "Cleaning")
+  (ilog! "TODO: Enable cleaning all profiles")
+  (ilog! "Removing ELN Cache: %s" (expand-file-name blood--eln-cache-name blood-cache-dir))
+  (delete-directory (expand-file-name blood--eln-cache-name blood-cache-dir) t)
+  (cond (blood--straight-initialised
+         (ilog! "Removing Build: %s" (straight--build-dir))
+         (delete-directory (straight--build-dir) t)
+         (delete-directory (straight--modified-dir))
+         (delete-file (straight--build-cache-file))
+         )
+        (t
+         (error "TODO: clean for non-straight installs")
+         )
+        )
+  (hlog! "Clean Complete")
   )
 
 (provide 'blood-clean)

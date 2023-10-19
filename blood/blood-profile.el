@@ -25,11 +25,13 @@
 
 (defconst BLOOD-PROFILE-FILE-PATTERN "profile\\(-.+\\)?.el" "blood will search and load all profiles in files with this name")
 
-(defvar blood-profile--declared-ht     (make-hash-table) "All declared profiles, which can be activated later")
+(defvar blood-profile--declared-ht     (make-hash-table) "All declared profiles, which can be activated later. Use `blood-profile--register' to add. keys are profile names as symbols ")
 
 (defvar blood-profile-active-specs nil "The Specs of the active profiles, as a stack. the original profile is last.")
 
 (defvar blood-profile--installation-dir nil "The current profile's package installation directory")
+
+(defvar blood-profile--build-dir nil "The current profile's build directory")
 
 (defvar blood-profile--clear-hook nil "Functions to run when clearing the profile stack")
 
@@ -41,7 +43,7 @@
   (when clear
     (ilog! "Clearing Profile Stack")
     (setq blood-profile-active-specs nil
-  native-comp-eln-load-path (expand-file-name "eln-cache" blood-cache-dir)
+  native-comp-eln-load-path (expand-file-name blood--eln-cache-name blood-cache-dir)
           load-path blood--original-load-path
           )
     (run-hooks 'blood-profile--clear-hook)
@@ -81,34 +83,37 @@
 (defmacro blood-profile--build-spec (profile-name default disabled args)
   "is a macro to allow expansion and checking of init.el"
   `(progn
-     (ilog! "Collecting Profile Spec Struct")
-     (list
-      :name                 ,profile-name
-      :source               (file!)
-      :default              ,default
-      :disabled             ,disabled
-      :bootstrap            ,(or (plist-get args :bootstrap) (list))
-      :modules              ,(blood-profile--build-active-modules (memq :active-modules: args))
-      :constraints          (list :system        ,(plist-get args :on-system)
-                                  :emacs-version ,(plist-get args :on-emacs)
-                                  )
-      :paths                (list :install ,(plist-get args :install-to)
-                                  :build   ,(plist-get args :build-to)
-                                  :modules ,(cons 'list (plist-get args :modules-from))
-                                  )
-      :recipes              ,(plist-get args :recipes)
-      :block-compile-of     ,(plist-get args :block-compile-of)
-      :post-activation      ,(when (plist-get args :on-activation)
-                               `(lambda () ,@(plist-get args :on-activation)))
-      )
+     (ghlog! "Building Profile: %s" ,profile-name)
+     (prog1 (list
+             :name                 ,profile-name
+             :source               (file!)
+             :default              ,default
+             :disabled             ,disabled
+             :bootstrap            ,(or (plist-get args :bootstrap) (list))
+             :modules              ,(blood-profile--build-active-modules (memq :active-modules: args))
+             :constraints          (list :system        ,(plist-get args :on-system)
+                                         :emacs-version ,(plist-get args :on-emacs)
+                                         )
+             :paths                (list :install ,(plist-get args :install-to)
+                                         :build   ,(plist-get args :build-to)
+                                         :modules ,(cons 'list (plist-get args :modules-from))
+                                         )
+             :recipes              ,(plist-get args :recipes)
+             :block-compile-of     ,(plist-get args :block-compile-of)
+             :post-activation      ,(when (plist-get args :on-activation)
+                                      `(lambda () ,@(plist-get args :on-activation)))
+             )
+       (glogxs!)
+       )
      )
   )
 
 (defun blood-profile--build-active-modules (lst)
   "Convert the remaining list into a list of (:group %s :module %s :allow () :disallow ())"
   (let ((source (cl-copy-list lst))
-        curr res)
-    (glog! "Parsing Module Lists: %s" lst)
+        curr
+        result)
+    (glog! "Parsing Active Module List: %s" lst)
     (while source
       (pcase (pop source)
         (:active-modules: nil)
@@ -116,8 +121,8 @@
          (setq curr (append curr (list kw (pop source))))
          )
         ((and kw (pred keywordp))
-         (when curr (push curr res) (setq curr nil))
-         (ilog! "Handling Module: %s" kw)
+         (when curr (push curr result) (setq curr nil))
+         (ilog! "Registering Active Module: %s" kw)
          (setq curr (append curr (list :group (substring (symbol-name kw) 1)
                                        :module (symbol-name (pop source))
                                        )))
@@ -127,14 +132,19 @@
          )
         )
       )
-    (push curr res)
-    (ilog! "Active Modules Parsed: %s" res)
-    (glogx! (list 'quote res))
+    (when curr (push curr result))
+    (glogx!)
+    (ilog! "Active Modules Parsed: %s" result)
+    (when result (list 'quote result))
     )
   )
 
 (defun blood-user-files! ()
-  (setq user-emacs-directory (expand-file-name (file-name-concat (plist-get (blood-profile-current) :name) "user-files") blood-cache-dir))
+  (setq user-emacs-directory (expand-file-name (file-name-concat "profiles" (plist-get (blood-profile-current) :name) "user-files") blood-cache-dir))
+  (ilog! "User Emacs Directory Set to: %s" user-emacs-directory)
+  (unless (file-exists-p user-emacs-directory)
+    (make-directory user-emacs-directory t)
+      )
   )
 
 (defun blood-auto-saves! ()

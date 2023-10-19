@@ -42,8 +42,9 @@
       )
 
 (use! evil-escape
-      :recipe '(:host github :repo "jgrey4296/evil-escape-hook")
-      :after 'evil
+      ;; :disabled t
+      :recipe (:host github :repo "jgrey4296/evil-escape-hook")
+      ;; :after (blah)
       :pre-load (
                  (setq evil-escape-inhibit-functions nil ;; '(evil-ex-p)
                        evil-escape-excluded-states '(normal multiedit emacs motion)

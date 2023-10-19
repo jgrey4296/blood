@@ -1,46 +1,50 @@
 ;; early-init.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; BLOOD early-init.
-
-
 ;;-- load path setup
-;; Add blood to load path
+(defconst BLOOD-SRC-DIR-ENV-VAR "BLOODSRC")
 (defconst BLOOD-USER-DIR-ENV-VAR "BLOODDIR")
+(defcustom blood-config-dir (expand-file-name (or (getenv BLOOD-USER-DIR-ENV-VAR) "~/.config/blood/")) "directory for config files")
+;; Add blood to load path
 (set-default-toplevel-value 'load-path (append
-                                        (if (getenv BLOOD-USER-DIR-ENV-VAR) (list (getenv BLOOD-USER-DIR-ENV-VAR)))
+                                        (list (or (getenv BLOOD-SRC-DIR-ENV-VAR) blood-config-dir))
                                         (list (file-name-concat (getenv "HOME") ".emacs.d/blood"))
                                         (default-toplevel-value 'load-path)))
 
 ;;-- end load path setup
+
 (require 'cl-lib)
 (require 'blood-utils)
+(require 'blood-defs)
 
-(hlog! "Early Init")
-(log! "CLI args: %s" command-line-args)
+(log! :debug "Early Init: %s" (getenv "TERM"))
+(log! :debug "CLI args: %s" command-line-args)
 
 ;;-- arg processing
 ;; Doing this early, so a set profile or command is usable in the init file.
-(let (processed-cli-args cmd profile)
+(let (processed-cli-args cmd profile top)
   (while command-line-args
-    (cond ((equal "--sync" (car command-line-args)) (setq cmd 'sync))
-          ((equal "--profile"(car command-line-args)) (setq profile (pop command-line-args)))
-          ((equal "--profiles" (car command-line-args)) (setq cmd 'profiles))
-          ((equal "--report"   (car command-line-args)) (setq cmd 'report))
-          ((equal "--batch"    (car command-line-args)) (setq cmd 'batch))
-          ((equal "--clean"    (car command-line-args)) (setq cmd 'clean))
-          ((equal "-h"         (car command-line-args)) (setq cmd 'help))
-          (t (push             (car command-line-args) processed-cli-args))
+    (setq top (pop command-line-args))
+    (cond ((equal "--sync" top) (setq blood--cmd 'sync))
+          ((equal "--profile"top) (setq blood-profile--default (pop command-line-args)))
+          ((equal "--profiles" top) (setq blood--cmd 'profiles))
+          ((equal "--stub"     top) (setq blood--cmd 'stub))
+          ((equal "--report"   top) (setq blood--cmd 'report))
+          ((equal "--batch"    top) (setq blood--cmd 'batch))
+          ((equal "--clean"    top) (setq blood--cmd 'clean))
+          ((equal "-h"         top) (setq blood--cmd 'help))
+          (t (push             top processed-cli-args))
           )
-    (pop command-line-args)
     )
-  (defvar blood--cmd (or cmd 'run) "the startup command")
-  (defvar blood-profile--default profile "The current profile")
   (setq command-line-args (reverse processed-cli-args)
-        noninteractive (not (eq blood--cmd 'run))
-        initial-window-system nil
+        noninteractive (seq-contains-p blood--noninteractive-cmds blood--cmd)
         inhibit-message (not noninteractive)
         )
-  (hlog! "BLOOD: (profile %s) (command %s) (remaining %s)" blood-profile--default blood--cmd command-line-args)
+  (hlog! "BLOOD")
+  (ilog! "Profile: %s" blood-profile--default)
+  (ilog! "Command: %s" blood--cmd)
+  (ilog! "Remaining CLI Args:  %s"  command-line-args)
+  (hlog! "-----")
   )
 
 ;;-- end arg processing
@@ -52,6 +56,7 @@
   (setq init-file-debug t
         debug-on-error  t
         noninteractive nil
+        blood--trace-memory t
         )
   ;; todo - load-file tracking
   )
@@ -59,6 +64,7 @@
 ;;-- end debug startup
 
 (unless noninteractive (blood--force-terminal))
+
 ;;-- startup vars
 ;; pre-Startup Performance adjustments
 (setq gc-cons-threshold            most-positive-fixnum ;; Don't run gc till after startup
@@ -78,17 +84,19 @@
       native-comp-always-compile                          nil
       native-comp-enable-subr-trampolines                 nil
       package-native-compile                              nil
+      comp-files-queue                                    nil
+      async-bytecomp-allowed-packages                     nil
       native-comp-jit-compilation-deny-list      '(".")
       native-comp-bootstrap-deny-list            '(".")
       native-comp-async-jobs-number 1
-      comp-files-queue                nil
-      async-bytecomp-allowed-packages nil
-      native-comp-jit-compilation     nil
       ;; native-comp-eln-load-path       nil ;;(list (file-name-as-directory (expand-file-name comp-native-version-dir invocation-directory)))
-      auto-save-list-file-prefix "~/.cache/blood/autosave/.saves-"
+      auto-save-list-file-prefix (expand-file-name "autosave/.saves-" blood-cache-dir)
+
+      ;; for any initial caches
+      user-emacs-directory (expand-file-name "~/.cache/blood/profiles/startup")
       )
 
-(startup-redirect-eln-cache "~/.cache/blood/eln")
+(startup-redirect-eln-cache (expand-file-name blood--eln-cache-name blood-cache-dir))
 
 ;; From Doom: Stricter security defaults
 (setq gnutls-verify-error noninteractive
@@ -107,7 +115,9 @@
                     "gnutls-cli -p %p --dh-bits=3072 --ocsp --x509cafile=%t --strict-tofu --priority='SECURE192:+SECURE128:-VERS-ALL:+VERS-TLS1.2:+VERS-TLS1.3' %h"
                     "gnutls-cli -p %p %h" ;; compatibility fallbacks
                     )
-      server-auth-dir (expand-file-name "~/.secrets")
+      server-auth-dir (if (getenv "SECRETSDIR")
+                          (expand-file-name "emacs" (getenv "SECRETSDIR"))
+                        (expand-file-name "~/.config/secrets/emacs/"))
       )
 
 ;;-- end startup vars

@@ -74,13 +74,6 @@
   (glogx!)
   )
 
-(defun blood--generate-autoloads (&rest args)
-  ;; todo - autoloads generator
-  (ghlog! "Generating Autoloads")
-  nil
-  (glogx!)
-  )
-
 (defun doom-restore-menu-bar-in-gui-frames-h (&optional frame)
   "from doom for handling GUI's on mac with no menu bar"
   (when-let (frame (or frame (selected-frame)))

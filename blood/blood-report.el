@@ -22,15 +22,23 @@
 ;;; Code:
 ;;-- end header
 (llog! "Report Lib")
+(blood-register-cache! :report
+                       #'(lambda (data) data))
 
-(defun blood-report-h ()
-  "TODO print a report on the current profile:
-everything in its spec (name, source, default, disabled, backend, etc)
-"
-  (hlog! "Report")
+(defun report! ()
+  (interactive)
+  (hlog! "TODO: Generate Report")
+  ;; load order, memory usage, load time, etc
 
   )
 
+(defun blood-report-h ()
+  "print a report on the current profile:
+everything in its spec (name, source, default, disabled, backend, etc)
+"
+  (hlog! "TODO Report")
+
+  )
 
 (provide 'blood-report)
 ;;; blood-report.el ends here

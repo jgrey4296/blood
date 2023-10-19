@@ -26,7 +26,7 @@
 (defun blood-native--setup-h ()
   (ghlog! "Setting up Native Compilation")
   (setq native-compile-target-directory (file-name-directory (expand-file-name
-                                                              (file-name-concat "eln-cache"
+                                                              (file-name-concat blood--eln-cache-name
                                                                                 (plist-get (blood-profile-current) :name)
                                                                                 comp-native-version-dir)
                                                               blood-cache-dir))
@@ -52,13 +52,14 @@
         native-comp-async-report-warnings-errors init-file-debug
         native-comp-warning-on-missing-source    init-file-debug
         )
+  (add-hook 'blood-profile--post-activate-hook #'blood-native--update-eln-cache-h)
 
   (when init-file-debug
-    (add-hook 'native-comp-async-cu-done-functions #'(lambda (file) (log! "Native Comp Success: %s -> %s" file (comp-el-to-eln-filename file))))
-    (add-hook 'native-comp-async-all-done-hook     #'(lambda () (log! "All Native Compilations Complete")))
-    (advice-add 'native-compile         :before    #'(lambda (fn &optional out) (log! "Native Compile: %s : %s" fn out)))
-    (advice-add 'native-compile-async   :before    #'(lambda (fls &rest args) (log! "Async Native Compile: %s" fls)))
-    (advice-add 'comp-run-async-workers :before    #'(lambda () (log! "Starting async compilation: %s : %s : %s" comp-files-queue comp-native-version-dir native-compile-target-directory)))
+    (add-hook 'native-comp-async-cu-done-functions #'(lambda (file) (log! :debug "Native Comp Success: %s -> %s" file (comp-el-to-eln-filename file))))
+    (add-hook 'native-comp-async-all-done-hook     #'(lambda () (log! :debug "All Native Compilations Complete")))
+    (advice-add 'native-compile         :before    #'(lambda (fn &optional out) (log! :debug "Native Compile: %s : %s" fn out)))
+    (advice-add 'native-compile-async   :before    #'(lambda (fls &rest args) (log! :debug "Async Native Compile: %s" fls)))
+    (advice-add 'comp-run-async-workers :before    #'(lambda () (log! :debug "Starting async compilation: %s : %s : %s" comp-files-queue comp-native-version-dir native-compile-target-directory)))
     )
   ;; (add-hook 'kill-emacs-query-functions #'blood-native--clear-compilation-queue-on-exit)
   ;; (add-hook 'kill-emacs-hook #'blood-native--noninteractive-clear-compilation-queue)
@@ -68,6 +69,16 @@
   (ilog! "native-comp-eln-load-path: %s" native-comp-eln-load-path)
   (ilog! "native-comp-async-jobs-number: %s" native-comp-async-jobs-number)
   (glogx!)
+  )
+
+(defun blood-native--update-eln-cache-h ()
+  "For adding to blood-profile--post-activate-hook"
+  (setq native-compile-target-directory (file-name-directory (expand-file-name
+                                                              (file-name-concat blood--eln-cache-name
+                                                                                (plist-get (blood-profile-current) :name)
+                                                                                comp-native-version-dir)
+                                                              blood-cache-dir))
+        )
   )
 
 (defun blood-native--clear-compilation-queue-on-exit ()

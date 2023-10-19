@@ -27,9 +27,11 @@
 (install! 'cl-lib) ;; profile-indpendent package requirement
 
 (ilog! "")
-(glog! "Current Variable Assignments")
+(ghlog! "Current Variable Assignments")
 (dolist (loc '(native-comp-eln-load-path data-directory doc-directory exec-directory
-	       installation-directory invocation-directory invocation-name source-directory shared-game-score-directory))
+	       installation-directory invocation-directory invocation-name source-directory
+               shared-game-score-directory noninteractive blood--cmd
+               ))
   (ilog! "%-30s : %s" (symbol-name loc) (symbol-value loc))
   )
 (glogx!)

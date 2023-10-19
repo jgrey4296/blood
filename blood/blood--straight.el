@@ -60,6 +60,21 @@
 (defun in-straight! (&rest args)
   (expand-file-name (apply #'file-name-concat "straight" args) blood-cache-dir))
 
+(defun blood--bootstrap-straight-profile-build-dir (name-or-spec)
+  (let* ((name (if (stringp name-or-spec) name-or-spec (plist-get name-or-spec :name)))
+         (spec (if (stringp name-or-spec) (gethash name-or-spec blood-profile--declared-ht) name-or-spec))
+         (paths (plist-get spec :paths))
+         )
+    (cond ((and paths (plist-get paths :build))
+           (plist-get paths :build))
+          ((plist-get spec :name)
+           (format "build-%s-%s" emacs-version (plist-get spec :name)))
+          (t
+           (format "build-%s-%s" emacs-version name))
+          )
+    )
+  )
+
 (defun blood--bootstrap-straight (spec)
   " download and initialize straight for package management
 adapted from doom--ensure-straight
@@ -84,15 +99,13 @@ adapted from doom--ensure-straight
               ((integerp vc-depth)
                (ilog! " Cloning Depth %s Straight into: %s" vc-depth repo-dir)
                (make-directory repo-dir 'recursive)
-               (let ((default-directory repo-dir))
-                 (blood--call "git" "clone" "--origin" "origin"
-                                          repo-url
-                                          repo-dir
-                                          "--depth" (number-to-string vc-depth)
-                                          branch-switch
-                                          "--no-tags"
-                                          "--branch" branch)
-                 )
+               (blood--dcall repo-dir "git" "clone" "--origin" "origin"
+                             repo-url
+                             repo-dir
+                             "--depth" (number-to-string vc-depth)
+                             branch-switch
+                             "--no-tags"
+                             "--branch" branch)
                )
               )
         )
@@ -106,8 +119,7 @@ adapted from doom--ensure-straight
   (let* ((paths (plist-get spec :paths))
          (recipes (plist-get spec :recipes))
          (repo-dir (or (plist-get paths :install) blood--bootstrap-straight-location))
-         (profile-build-dir (or (plist-get paths :build)
-                                (format "build-%s-%s" emacs-version (plist-get spec :name))))
+         (profile-build-dir (blood--bootstrap-straight-profile-build-dir spec))
          (straight-file-loc (in-straight! repo-dir "straight"))
          (profile-sym (intern (plist-get spec :name)))
          (profile-cache-dir (expand-file-name (file-name-concat "profiles" (plist-get spec :name)) blood-cache-dir))
@@ -126,8 +138,8 @@ adapted from doom--ensure-straight
           straight-disable-compile        t
           straight-disable-autoloads      t
 
-
-          blood-profile--installation-dir (in-straight! "repos")
+          blood-profile--installation-dir (in-straight! repo-dir)
+          blood-profile--build-dir        (in-straight! profile-build-dir)
           )
     (unless (alist-get profile-sym straight-profiles nil)
       (push `(,profile-sym . ,(file-name-concat profile-cache-dir "straight-lockfile.el")) straight-profiles))
@@ -163,8 +175,8 @@ eg: emacs.d/straight/build-28.2
   )
 
 (defun blood--sync-straight (packages)
-  "call straight-usej-package on each member of the input list"
-  (ghlog! "Straight Syncing Module Packages: %s" (plist-get (blood-profile-current) :name))
+  "call straight-use-package on each member of the input list"
+  (ghlog! "Sync: Installing Module Components using Straight: %s" (plist-get (blood-profile-current) :name))
   (ilog! "Cache File: %s" (straight--build-cache-file))
   (ilog! "Build Dir: %s" (straight--build-dir))
   (unless (and (fboundp 'straight-use-package) (fboundp 'straight--transaction-finalize))
@@ -192,6 +204,8 @@ eg: emacs.d/straight/build-28.2
   (straight--transaction-finalize)
   (glogx!)
   )
+
+;; TODO handle straight's popups that don't work in noninteractive
 
 (provide 'blood--straight)
 ;;; blood--straight.el ends here

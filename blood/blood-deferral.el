@@ -101,7 +101,8 @@ from doom."
                 (,pathsym (mapcar (lambda (x) (file-name-concat ,dirsym x)) (if (stringp ,afters) (list ,afters ,@files) (list ,@files))))
                 )
            (cond ((consp ,afters)
-                  (mapcar #'(lambda (x) (add-to-list 'blood-defer--load-queue (list 'after ,afters (list 'load x) 'try blood-defer--load-trys))) ,pathsym))
+                  (mapcar #'(lambda (x) (add-to-list 'blood-defer--load-queue (list 'after ,afters (list 'load x) 'try blood-defer--load-trys))) ,pathsym)
+                  )
                  (t
                   (mapcar #'(lambda (x) (add-to-list 'blood-defer--load-queue (list 'load x))) ,pathsym))
                  )
