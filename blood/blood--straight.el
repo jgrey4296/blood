@@ -21,7 +21,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(llog! "Straight")
+(llog! "Straight boostrapper")
 (require 'env)
 
 (defvar blood--bootstrap-straight-location "repos/straight.el" "relative path for straight to isntall into")

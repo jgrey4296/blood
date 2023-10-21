@@ -47,8 +47,9 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
   "Make the core paths needed for running blood"
   (ghlog! "Bootstrapping Paths")
   (let ((cache-dir (expand-file-name  blood-cache-dir)))
-    (unless (file-exists-p cache-dir)
-      (ilog! "Making cache Directory")
+    (if (file-exists-p cache-dir)
+        (ilog! "Cache Exists: %s" cache-dir)
+      (ilog! "Making cache Directory: %s" cache-dir)
       (make-directory cache-dir 'recursive))
     )
   (glogx!)

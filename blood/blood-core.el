@@ -73,14 +73,14 @@ Has Three main modes of running:
               ;; Queue the packages for cleaning
               (push spec blood--clean-queue)
               (add-hook 'after-init-hook #'blood--clean-h (bloody-lazy! :clean))
-             ))
+              ))
           ((eq blood--cmd 'report)
            `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args)))
               (blood-profile--register spec)
               (require 'blood-report)
               ;; queue this profile to be reported
               (add-hook 'after-init-hook #'blood--report-h (bloody-lazy! :report))
-      ))
+              ))
           ((eq blood--cmd 'stub)
            (require 'blood-stub)
            (add-hook 'after-init-hook #'blood-stub-h (bloody-lazy! :run))
@@ -88,6 +88,7 @@ Has Three main modes of running:
           (is-interactive
            `(let ((spec (blood-profile--build-spec ,profile-name ,default ,disabled ,args))
                   )
+              (push spec blood--bootstrap-queue)
               (blood-profile--register spec)
               (if (and ,default (null blood-profile--default))
                   (setq blood-profile--default ,profile-name))

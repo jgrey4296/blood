@@ -62,7 +62,7 @@ use `bloody-lazy!' to convert the values
   (unless (file-exists-p dir)
     (error "%s doesn't exist for call of %s" dir prog))
   (let ((default-directory dir))
-    (apply #'blood-call prog args)
+    (apply #'blood--call prog args)
     )
   )
 
