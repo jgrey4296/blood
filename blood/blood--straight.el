@@ -81,7 +81,7 @@ adapted from doom--ensure-straight
 "
   (with-environment-variables (("GIT_CONFIG" nil)
                                ("GIT_CONFIG_NOSYSTEM" "1")
-                               ("GIT_CONFIG_GLOBAL" (or (getenv "DOOMGITCONFIG") "/dev/null"))
+                               ("GIT_CONFIG_GLOBAL" (or (getenv "BLOODGITCONFIG") "/dev/null"))
                                )
     (let* ((spec-paths (plist-get spec :paths))
            (repo-dir (in-straight! (or (plist-get spec-paths :install) blood--bootstrap-straight-location)))

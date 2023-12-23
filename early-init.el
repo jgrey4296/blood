@@ -2,8 +2,8 @@
 
 ;; BLOOD early-init.
 ;;-- load path setup
-(defconst BLOOD-SRC-DIR-ENV-VAR "BLOODSRC")
-(defconst BLOOD-USER-DIR-ENV-VAR "BLOODDIR")
+(defconst BLOOD-SRC-DIR-ENV-VAR "BLOOD_SRC")
+(defconst BLOOD-USER-DIR-ENV-VAR "BLOOD_CONFIG")
 (defcustom blood-config-dir (expand-file-name (or (getenv BLOOD-USER-DIR-ENV-VAR) "~/.config/blood/")) "directory for config files")
 ;; Add blood to load path
 (set-default-toplevel-value 'load-path (append
@@ -17,8 +17,10 @@
 (require 'blood-utils)
 (require 'blood-defs)
 
-(log! :debug "Early Init: %s" (getenv "TERM"))
-(log! :debug "CLI args: %s" command-line-args)
+
+
+(ilog! "Early Init: %s" (getenv "TERM"))
+(ilog! "CLI args: %s" command-line-args)
 
 ;;-- arg processing
 ;; Doing this early, so a set profile or command is usable in the init file.

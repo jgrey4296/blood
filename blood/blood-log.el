@@ -8,9 +8,9 @@
 
 (defconst blood--log-levels (list :debug :info :warn :nolog))
 
-(defvar blood--current-log-level :nolog)
+(defvar blood--current-log-level :info)
 
-(defvar blood--level-log-fmt "(%s) : %s")
+(defvar blood--level-log-fmt "(%s) : %s\n")
 
 (defun blood-set-loglevel (level)
   (unless (seq-contains-p blood--log-levels level)
@@ -33,7 +33,7 @@
   "A Load message"
   (declare (indent defun))
   (when debug-on-error
-    `(ilog! "Loading: %s" (format ,text ,@args))
+    `(log! :debug "Loading: %s" (format ,text ,@args))
     )
   )
 
@@ -41,13 +41,13 @@
   " A Simple, debug message when 'debug-on-error is true"
   (declare (indent defun))
   `(when debug-on-error
-       (funcall #'message ,text ,@args)
+       (log! :debug ,text ,@args)
      )
   )
 
 (defmacro hlog! (text &rest args)
   "A Header Log"
-  `(message "\n%s %s %s" blood--log-header-line (format ,text ,@args) blood--log-header-line)
+  `(log! :info "\n%s %s %s" blood--log-header-line (format ,text ,@args) blood--log-header-line)
   )
 
 (defmacro ghlog! (entermsg &rest args)
@@ -55,7 +55,7 @@
   (declare (indent defun))
   `(progn
      (cl-incf blood--log-group-level 2)
-     (message "%s >> Blood: %s" (make-string blood--log-group-level ?-) (format ,entermsg ,@args)))
+     (log! :info "%s >> Blood: %s" (make-string blood--log-group-level ?-) (format ,entermsg ,@args)))
   )
 
 (defmacro glog! (entermsg &rest args)
@@ -63,7 +63,7 @@
   (declare (indent defun))
   `(progn
      (cl-incf blood--log-group-level 2)
-     (message "%s >> Blood: %s" (make-string blood--log-group-level ? ) (format ,entermsg ,@args)))
+     (log! :info "%s >> Blood: %s" (make-string blood--log-group-level ? ) (format ,entermsg ,@args)))
   )
 
 (defmacro glogx! (&rest rest)
@@ -76,7 +76,7 @@
   )
 
 (defun glogxs! (&optional msg)
-  (message "%s" (or msg ""))
+  (log! :info "%s" (or msg ""))
   (cl-decf blood--log-group-level 2)
   (if (< blood--log-group-level 2) (setq blood--log-group-level 2))
   )
@@ -84,7 +84,7 @@
 (defmacro ilog! (msg &rest args)
   "Indented log line"
   (declare (indent defun))
-  `(message "%s > %s" (make-string (+ 2 blood--log-group-level) ? ) (format ,msg ,@args))
+  `(log! :info "%s > %s" (make-string (+ 2 blood--log-group-level) ? ) (format ,msg ,@args))
   )
 
 (provide 'blood-log)

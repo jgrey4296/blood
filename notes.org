@@ -46,7 +46,6 @@
  Straight.
  Git.
 
-
 **  Module todos:
 - performance module: gcmh-mode
 - keybind core
