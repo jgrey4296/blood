@@ -7,7 +7,6 @@
 ;; Maintainer: John Grey <johngrey@Johns-Mac-mini.local>
 ;; Created: September 07, 2023
 ;; Modified: September 07, 2023
-;; Version: 0.0.1
 ;; Keywords:
 ;; Homepage: https://github.com/jgrey4296
 ;; Package-Requires: ((emacs "24.3"))

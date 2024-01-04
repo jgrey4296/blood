@@ -4,7 +4,7 @@
 
 (defgroup blood nil "Blood settings")
 
-(defconst blood-version              "0.1.0" "This Version of blood")
+(defconst blood-version "0.1.0" "This Version of blood")
 
 (defconst blood-available-cmds '(batch clean sync run report stub))
 
