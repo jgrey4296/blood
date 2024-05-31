@@ -1,0 +1,167 @@
+#+TITLE: Blood Todos
+
+* [#C] blood                                     :blood:
+:PROPERTIES:
+:ID:       a9c88b0c-54c5-48f4-9a4b-0a60cf9f8102
+:END:
+** QUEUED Testing                               :test:
+*** deferral
+*** profile/module/package building
+*** dag
+*** logging
+*** sync
+*** trace
+*** force terminal
+*** inhibitions
+*** caches
+*** native compilation
+*** straight setup
+*** bootstraps
+*** cleaning
+*** cli control
+** Features                                     :feature:
+*** bootstrap
+*** clean
+*** core
+*** dag
+*** deferral
+*** defs
+*** early-init
+*** hooks
+*** log
+*** modules
+**** package autoloads
+**** setup advice
+**** setup hooks
+*** profile
+*** report
+*** stub
+*** sync
+*** trace
+*** utils
+**** advise load
+*** native
+*** straight
+**** convert package specs to straight recipes
+**** disable straights popups
+
+** Blood Basic Profile
+*** config default
+*** config disabled
+*** config help
+*** config search
+*** config ui
+*** editor buffer-nav
+*** editor evil
+*** editor text-manipulation
+*** editor undo
+*** editor window-nav
+*** tools dired
+*** ui helm
+*** ui hydra
+*** ui ibuffer
+*** ui ivy
+*** ui minibuffer
+*** ui ophints
+*** ui popup
+*** lang-weakly-typed lisp-langs
+*** lang-weakly-typed python
+
+** BLOCKED Blood Modules                        :module:blood:
+*** Modules
+**** config
+***** bindings
+***** default
+***** disabled
+***** help
+***** linux
+***** mac
+***** search
+***** ui
+***** windows
+**** editor
+***** autosave
+***** buffer-nav
+***** evil
+***** fold
+***** large-files
+***** tagging
+***** text-manipulation
+***** undo
+***** window-nav
+**** experimentation
+**** ide
+***** company
+***** debugger
+***** diff
+***** librarian
+***** minimap
+***** snippets
+***** support
+***** version-control
+***** workspaces
+**** lang-data
+***** csv
+***** dot
+***** graphql
+***** json
+***** logs
+***** nu
+***** sql
+***** toml
+***** xml
+***** yaml
+**** lang-dsl
+***** acab
+***** ai-and-logic
+***** music
+***** nix
+***** qt
+***** rest
+***** sh
+**** lang-strongly-typed
+***** coq
+***** dotnet-langs
+***** fstar
+***** haskell
+***** idris
+***** jvm-langs
+***** lean
+***** ml-langs
+***** rust
+**** lang-text
+***** bibtex
+***** inform
+***** latex
+***** markdown
+***** org
+***** plantuml
+***** rst
+***** web
+**** lang-weakly-typed
+***** erlang-vms
+***** godot
+***** lisp-langs
+***** lua
+***** python
+***** ruby
+**** tools
+***** calendar
+***** dired
+***** eval
+***** mail
+***** pdfs
+***** processes
+***** term
+**** ui
+***** doom-ui
+***** helm
+***** hydra
+***** ibuffer
+***** ivy
+***** minibuffer
+***** ophints
+***** popup
+** docs
+
+* Links
