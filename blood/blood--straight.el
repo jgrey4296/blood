@@ -34,7 +34,7 @@
 (defvar blood--bootstrap-straight-single-branch t "whether straight should clone only the branch used")
 
 (defconst blood--bootstrap-straight-default-recipes
-  '((org-elpa :local-repo nil)
+  '((org-elpa           :local-repo nil)
     (melpa              :type git :host github
                         :repo "melpa/melpa"
                         :build nil)
@@ -54,20 +54,23 @@
 
   )
 
+(defvar blood--straight-recipes nil
+  "Additional registered recipes for straight"
+  )
+
 (defvar blood--straight-initialised nil)
 
 (defun in-straight! (&rest args)
   (expand-file-name (apply #'file-name-concat "straight" args) blood-cache-dir))
 
 (defun blood--bootstrap-straight-profile-build-dir (name-or-spec)
-  (let* ((name (if (stringp name-or-spec) name-or-spec (plist-get name-or-spec :name)))
-         (spec (if (stringp name-or-spec) (gethash name-or-spec blood-profile--declared-ht) name-or-spec))
-         (paths (plist-get spec :paths))
+  " Get the build directory of the profile "
+  (let* ((name (blood-uniq-id name-or-spec))
+         (spec (gethash name blood-profile--declared-ht))
+         (paths (blood--profile-s-paths spec))
          )
-    (cond ((and paths (plist-get paths :build))
-           (plist-get paths :build))
-          ((plist-get spec :name)
-           (format "build-%s-%s" emacs-version (plist-get spec :name)))
+    (cond ((and paths (blood--paths-s-build paths))
+           (blood--paths-s-build paths))
           (t
            (format "build-%s-%s" emacs-version name))
           )
@@ -82,8 +85,8 @@ adapted from doom--ensure-straight
                                ("GIT_CONFIG_NOSYSTEM" "1")
                                ("GIT_CONFIG_GLOBAL" (or (getenv "BLOODGITCONFIG") "/dev/null"))
                                )
-    (let* ((spec-paths (plist-get spec :paths))
-           (repo-dir (in-straight! (or (plist-get spec-paths :install) blood--bootstrap-straight-location)))
+    (let* ((spec-paths (blood--profile-s-paths spec))
+           (repo-dir (in-straight! (or (blood--paths-s-instal spec-paths) blood--bootstrap-straight-location)))
            (repo-url blood--bootstrap-straight-repo)
            (branch blood--bootstrap-straight-branch)
            (vc-depth blood--bootstrap-straight-depth)
@@ -114,14 +117,14 @@ adapted from doom--ensure-straight
 
 (defun blood--bootstrap-straight-init (spec)
   "Now that straight is bootstrapped, start it"
-  (glog! "Initializing Straight: %s" (plist-get spec :name))
-  (let* ((paths (plist-get spec :paths))
-         (recipes (plist-get spec :recipes))
-         (repo-dir (or (plist-get paths :install) blood--bootstrap-straight-location))
+  (glog! "Initializing Straight: %s" (blood-uniq-id spec))
+  (let* ((paths (blood--profile-s-paths spec))
+         (recipes (blood--profile-s-recipes spec))
+         (repo-dir (or (blood--paths-s-install paths) blood--bootstrap-straight-location))
          (profile-build-dir (blood--bootstrap-straight-profile-build-dir spec))
          (straight-file-loc (in-straight! repo-dir "straight"))
-         (profile-sym (intern (plist-get spec :name)))
-         (profile-cache-dir (expand-file-name (file-name-concat "profiles" (plist-get spec :name)) blood-cache-dir))
+         (profile-sym (blood-uniq-id spec))
+         (profile-cache-dir (expand-file-name (file-name-concat "profiles" (blood-uniq-id spec)) blood-cache-dir))
          )
     (require 'straight straight-file-loc)
     (unless (file-directory-p profile-cache-dir) (make-directory profile-cache-dir 'recursive))
@@ -129,7 +132,7 @@ adapted from doom--ensure-straight
           straight-build-dir profile-build-dir
           straight-build-cache-fixed-name nil
           straight-check-for-modifications nil
-          straight-current-profile (intern (plist-get spec :name))
+          straight-current-profile (blood-uniq-id spec)
           straight--packages-not-to-rebuild (make-hash-table)
           straight-cache-autoloads nil
 
@@ -161,8 +164,8 @@ eg: emacs.d/straight/build-28.2
 ->  emacs.d/straight/build-28.2-{profile}
 "
   (let* ((spec (blood-profile-current))
-         (profile-build-dir (or (plist-get (plist-get spec :paths) :build)
-                                (format "build-%s-%s" emacs-version (plist-get spec :name))))
+         (profile-build-dir (or (blood--paths-s-build (blood--profile-s-paths spec))
+                                (format "build-%s-%s" emacs-version (blood-uniq-id spec))))
          )
 
     (apply #'straight--dir profile-build-dir segments)
@@ -175,34 +178,49 @@ eg: emacs.d/straight/build-28.2
 
 (defun blood--sync-straight (packages)
   "call straight-use-package on each member of the input list"
-  (ghlog! "Sync: Installing Module Components using Straight: %s" (plist-get (blood-profile-current) :name))
+  (ghlog! "Sync: Installing Module Components using Straight: %s" (blood-uniq-id (blood-profile-current)))
   (ilog! "Cache File: %s" (straight--build-cache-file))
   (ilog! "Build Dir: %s" (straight--build-dir))
   (unless (and (fboundp 'straight-use-package) (fboundp 'straight--transaction-finalize))
     (error 'blood 'missing-straight-fns))
 
   (dolist (spec packages)
-    (let ((package (plist-get (plist-get spec :id) :package))
-          (recipe  (plist-get spec :recipe))
-          )
+    (let* ((package (blood--identifier-s-package (blood--package-s-id spec)))
+           (recipe  (blood--package-to-straight-recipe spec))
+           )
       (ilog! "Straight installing package: %s" package)
-      ;; TODO convert package specs to straight recipes
-      (cond ((eq recipe 'melpa)
-             (straight-use-package package nil)
-             )
-            ((and (plistp recipe) (eq (plist-get recipe :host) 'github))
-             (ilog! "Handling Github recipe")
-             (straight-use-package (append (list package :type 'git)
-                                           recipe))
-             )
-            (t (straight-use-package recipe nil))
-            )
+      (straight-use-package recipe)
       )
+    (ilog! "Finalizing Straight Transaction")
+    (straight--transaction-finalize)
+    (glogx!)
     )
-  (ilog! "Finalizing Straight Transaction")
-  (straight--transaction-finalize)
-  (glogx!)
   )
+
+(defun blood--package-to-straight-recipe (package-spec)
+  " Create a recipe from a package spec,
+returns a list for straight"
+  (let ((recipe (blood--package-s-recipe package-spec))
+        (package (blood--identifier-s-package (blood--package-s-id package-spec)))
+        )
+    (cond ((null recipe)
+           (append (list pacakge (assq 'melpa blood--bootstrap-straight-default-recipes))))
+          ((and (symbolp recipe)
+                (assq recipe (append blood--bootstrap-straight-default-recipes
+                                     blood--straight-recipes)))
+           (append (list package)
+                   (assq recipe (append blood--bootstrap-straight-default-recipes
+                                        blood--straight-recipes))))
+          ((blood--recipe-s-p recipe)
+           (append (list package)
+
+                   )
+           )
+          (t (error "Unknown recipe format for package" package-spec))
+          )
+    )
+  )
+
 
 ;; TODO handle straight's popups that don't work in noninteractive
 

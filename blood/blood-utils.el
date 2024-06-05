@@ -1,4 +1,4 @@
-;;; blood-utils.el -*- lexical-binding: t; no-byte-compile: t; -*-
+ ;;; blood-utils.el -*- lexical-binding: t; no-byte-compile: t; -*-
 ;;-- header
 ;;
 ;; Copyright (C) 2023 John Grey
@@ -34,7 +34,7 @@
 (defvar   blood--caches (make-hash-table))
 
 (defconst blood--hook-laziness '(;; Not Lazy
-                         :cold-start   -99
+                                 :cold-start   -99
                                  :bootstrap    -95
                                  :clean        -90
                                  :sync         -85
@@ -53,10 +53,10 @@ use `bloody-lazy!' to convert the values
 "
   )
 
-
 (llog! "Utils")
 
 ;;-- external calls
+
 (defun blood--dcall (dir prog &rest args)
   (unless (file-exists-p dir)
     (error "%s doesn't exist for call of %s" dir prog))
@@ -107,11 +107,13 @@ use `bloody-lazy!' to convert the values
 
 (defun blood--find-with-fd (base source &optional pattern type)
   (ilog! "Searching: %s" (expand-file-name base source))
-  (cond ((executable-find "fdfind")
- (split-string (cdr (blood--ecall "fdfind"
-                      "-t" (or type "f")
-                      (or pattern ".")
-                      (expand-file-name base source)))
+  (cond ((not (file-directory-p (expand-file-name base source)))
+         (ilog! "Search location does not exist: %s" (expand-file-name base source)))
+         ((executable-find "fdfind")
+         (split-string (cdr (blood--ecall "fdfind"
+                                          "-t" (or type "f")
+                                          (or pattern ".")
+                                          (expand-file-name base source)))
                        "\n" t " +")
          )
         ((executable-find "fd")
@@ -138,6 +140,7 @@ TODO advice load instead
   )
 
 ;;-- macro utils
+
 (defun blood--lambda! (data)
   "convert a list into a lambda, handling a list of sexps or just a single sexp.
 This isn't a macro though, because we don't want to actually construct it yet.
@@ -157,21 +160,30 @@ This isn't a macro though, because we don't want to actually construct it yet.
 ;;-- end macro utils
 
 ;;-- terminal forcing
+
 (defun blood--force-terminal ()
   "by default blood sets `initial-window-system' to nil, avoiding the startup of a gui.
 this ensures the terminal setup code runs.
 this is done in the early-init file, so startup's call to `tty-run-terminal-initialization'
 progresses as normal.
+
+this might be broken
 "
   (ilog! "Forcing a Terminal Frame")
-  (setq initial-window-system nil)
-  (select-frame (make-terminal-frame `((tty-type . ,(or (getenv "TERM") "xterm")))))
-  (tty-run-terminal-initialization (selected-frame) nil t)
-  )
+  (setq initial-window-system nil
+        frame-initial-frame t
+        inhibit-message t
+        )
+  (let ((curr (selected-frame)))
+    (select-frame (make-terminal-frame `((tty-type . ,(or (getenv "TERM") "xterm")))))
+    (tty-run-terminal-initialization (selected-frame) nil t)
+    (delete-frame curr))
+)
 
 ;;-- end terminal forcing
 
 (defmacro bloody-lazy! (kw &optional mod)
+  " a quick way to convert laziness kwords to priority values "
   (declare (indent defun))
   (if (not (plist-get blood--hook-laziness kw))
       `(error "Bad hook laziness value: %s" ,kw)
@@ -217,16 +229,19 @@ Pass a third argument to add to the cache instead of completely re-write
 
 (defun blood-read-cache! (kw)
   "Read a cache"
-  (ilog! "Reading Cached Data: %s" (blood-cache! kw))
-  (with-temp-buffer
-    (insert-file-contents-literally (blood-cache! kw))
-    (when (plist-get (gethash kw blood--caches) :header)
-      (require 'replace)
-      (goto-char (point-min))
-      (flush-lines "^## "))
-    (if (plist-get (gethash kw blood--caches) :read)
-        (funcall (plist-get (gethash kw blood--caches) :read) (buffer-string))
-      (buffer-string))
+  (if (not (file-exists-p (blood-cache! kw)))
+      (ilog! "Can't read cache, it does not exist: %s : %s" kw (blood-cache! kw))
+    (ilog! "Reading Cached Data: %s" (blood-cache! kw))
+    (with-temp-buffer
+      (insert-file-contents-literally (blood-cache! kw))
+      (when (plist-get (gethash kw blood--caches) :header)
+        (require 'replace)
+        (goto-char (point-min))
+        (flush-lines "^## "))
+      (if (plist-get (gethash kw blood--caches) :read)
+          (funcall (plist-get (gethash kw blood--caches) :read) (buffer-string))
+        (buffer-string))
+      )
     )
   )
 

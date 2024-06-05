@@ -43,18 +43,18 @@
 
   (ilog! "Syncing Profiles: %s" (length (hash-table-values blood-profile--declared-ht)))
   (dolist (spec (hash-table-values blood-profile--declared-ht))
-    (hlog! "Syncing Profile: %s" (plist-get spec :name))
+    (hlog! "Syncing Profile: %s" (blood--profile-s-name spec))
     (blood-profile-start-h spec t t)
     (let* ((mod-files (blood-sync--module-specs-of-profile spec)) ;; get active modules
            (components (blood-sync--collect-module-component-specs mod-files))
-           (install-fn (plist-get (or (plist-get spec :backend) blood--backend-default) :sync))
+           (install-fn (blood--backend-s-sync (or (blood--profile-s-backend spec) blood--backend-default)))
            )
       (funcall install-fn components)
       (blood-sync--byte-comp components)
       (blood-sync--native-comp components)
       (blood-sync--generate-autoloads components)
       (blood-dag-h)
-      (ilog! "Spec Synced: %s" (plist-get spec :name))
+      (ilog! "Profile Synced: %s" (blood--profile-s-name spec))
       )
     )
   )
@@ -66,12 +66,10 @@
 (defun blood-sync--module-specs-of-profile (spec)
   "given a PROFILE spec, get all active modules -> list of paths to active module definitions"
   (glog! "Getting Active Module Specs")
-  (let* ((module-locs (plist-get (plist-get spec :paths) :modules)) ;; list of paths
-         (modules (plist-get spec :modules)) ;; declared active modules
-         (module-symbols (mapcar #'(lambda (x) (blood-modules--sym-from-parts (plist-get x :group)
-                                                                              (plist-get x :module)))
-                                 modules))
-         (source (plist-get spec :source))
+  (let* ((module-locs (blood--paths-s-modules (blood--profile-s-paths spec))) ;; list of paths
+         (modules (blood--profile-s-modules spec)) ;; declared active modules
+         (module-symbols (mapcar #'(lambda (x) (blood-uniq-id x)) modules))
+         (source (blood--identifier-s-source (blood--profile-s-id spec)))
          found-modules
          active-modules
          )
@@ -113,7 +111,7 @@
       (llog! "%s (package collection)" file)
       (load file nil t)
       )
-    (ilog! "Loaded Module Specs: %s" (mapcar #'(lambda (x) (if x (plist-get (plist-get x :id) :fullsym)))
+    (ilog! "Loaded Module Specs: %s" (mapcar #'(lambda (x) (if x (blood-uniq-id x)))
                                              (apply #'append (hash-table-values blood-modules--declared-components-ht))))
     (prog1 (apply #'append (hash-table-values blood-modules--declared-components-ht))
       (glogx!))

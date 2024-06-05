@@ -26,7 +26,7 @@
   (ghlog! "Setting up Native Compilation")
   (setq native-compile-target-directory (file-name-directory (expand-file-name
                                                               (file-name-concat blood--eln-cache-name
-                                                                                (plist-get (blood-profile-current) :name)
+                                                                                (blood-uniq-iq (blood-profile-current))
                                                                                 comp-native-version-dir)
                                                               blood-cache-dir))
         native-comp-eln-load-path (append (list native-compile-target-directory) native-comp-eln-load-path)
@@ -74,7 +74,7 @@
   "For adding to blood-profile--post-activate-hook"
   (setq native-compile-target-directory (file-name-directory (expand-file-name
                                                               (file-name-concat blood--eln-cache-name
-                                                                                (plist-get (blood-profile-current) :name)
+                                                                                (blood-uniq-id (blood-profile-current))
                                                                                 comp-native-version-dir)
                                                               blood-cache-dir))
         )

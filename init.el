@@ -4,16 +4,22 @@
 
 ;; Profile declarations with module activations:
 (blood! :profile basic :default t
-        :modules-from ("./example")
-        ;; :install-to  nil
-        ;; :build-to nil
-        ;; :disallow (mod-feature keybindings)
-        :on-activation (
-                        (message "blah")
-                        )
-        :active-modules:
-        :blood example
-  )
+        :paths (:cache nil :install nil :build nil :modules ("./example") :secrets nil)
+        :backend straight
+        :bootstrap (#'fn1 #'fn2 #'fn3)
+        :constraints (:emacs nil :os nil)
+        :no-compile (package package2)
+        :init (
+               (message "Packages are about to be loaded")
+               )
+        :config (
+                 (message "Packages have been loaded")
+                 )
+        :active-modules: (
+                          (:blood example)
+                          (:blood other :allow () :disallow ())
+                          )
+        )
 
 (blood! :profile quick :disabled nil
         :package-installation "quick"

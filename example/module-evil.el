@@ -35,10 +35,20 @@
       :pre-load (message "Prior to loading evil")
       :advice ()
       :hooks ()
-      :post-load ((message "evil has loaded from: %s" (dir!))
+      :on-init ((message "Evil is going to be used"))
+      :on-load ((message "Evil is about to be loaded"))
+      :on-ready ((message "Evil has been loaded from: %s" (dir!))
                   (evil-mode 1)
                   (evil-ex-define-cmd "q[uit]" #'evil-quit-all)
                   )
+      :bind ((:map 'evil-mode-map
+              :n "x" #'blah
+              :v "y" #'bloo
+              )
+             (:map 'evil-normal-state-map
+
+                   )
+             )
       )
 
 (use! evil-escape

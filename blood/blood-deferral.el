@@ -20,7 +20,7 @@
 
 (defmacro file! ()
   "Return the file of the file this macro was called."
-  (or (macroexp-file-name) load-file-name buffer-file-name)
+  '(or (macroexp-file-name) load-file-name buffer-file-name)
 )
 
 (defmacro dir! ()

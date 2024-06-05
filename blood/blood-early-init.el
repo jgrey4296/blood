@@ -7,8 +7,8 @@
 ;;-- end Header
 
 (require 'cl-lib)
-(require 'blood-utils)
 (require 'blood-defs)
+(require 'blood-utils)
 
 (ilog! "Early Init: %s" (getenv "TERM"))
 (ilog! "CLI args: %s" command-line-args)

@@ -17,15 +17,14 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
   (hlog! "Bootstrapping")
   (unless blood--backend-default
     (require 'blood--straight)
-    (setq blood--backend-default (list :name 'straight
-                                       :require 'straight
-                                       :bootstrap (list
-                                                   #'blood--bootstrap-straight
-                                                   #'blood--bootstrap-straight-init
-                                                   )
-                                       :activator #'blood--bootstrap-straight-init
-                                       :sync #'blood--sync-straight
-                                       ))
+    (setq blood--backend-default (blood--backend-s :name 'straight
+                                                   :require 'straight
+                                                   :bootstrap (list
+                                                               #'blood--bootstrap-straight
+                                                               )
+                                                   :activator #'blood--bootstrap-straight-init
+                                                   :sync #'blood--sync-straight
+                                                   ))
     )
 
   (blood--bootstrap-git-check)
@@ -33,8 +32,8 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
   (if (not blood--bootstrap-queue)
       (ilog! "Nothing More to bootstrap")
     (dolist (spec blood--bootstrap-queue)
-      (ilog! "Bootstrapping Profile: %s" (plist-get spec :name))
-      (dolist (fn (or (plist-get spec :bootstrap) (plist-get blood--backend-default :bootstrap)))
+      (ilog! "Bootstrapping Profile: %s" (blood--profile-s-name spec))
+      (dolist (fn (or (blood--profile-s-bootstrap spec) (blood--backend-s-bootstrap blood--backend-default)))
         (ilog! "Calling: %s" fn)
         (funcall fn spec)
         )

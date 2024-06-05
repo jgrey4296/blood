@@ -56,7 +56,7 @@ topo sort the graph.
 
              (components (apply #'append (mapcar #'(lambda (y) (gethash y blood-modules--declared-components-ht))
                                                  (gethash package-sym blood-modules--package-component-map-ht))))
-             (afters (ensure-list (apply #'append (mapcar #'(lambda (x) (plist-get x :after)) components))))
+             (afters (ensure-list (apply #'append (mapcar #'(lambda (x) (blood--packages-s-after x)) components))))
              (full-deps (append deps afters))
             )
         (cond ((seq-contains-p repos package-sym) nil)
