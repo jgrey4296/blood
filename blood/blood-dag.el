@@ -20,15 +20,22 @@
 ;;
 ;;; Code:
 ;;-- end header
+(cl-assert (featurep 'blood-defs))
+(cl-assert (featurep 'blood-log))
+(cl-assert (featurep 'blood-utils))
+(cl-assert (featurep 'blood-modules))
 (llog! "Dag")
 
 (defconst blood-dag--root '__blood_root)
+
 (defvar blood-dag--graph (let ((table (make-hash-table :test 'equal)))
                            (puthash blood-dag--root nil table)
                            table
                            )
   "A DAG of Packages. __blood_root is the root which everything gets connected to")
+
 (defvar blood-dag--order nil)
+
 (blood-register-cache! :dag
                        #'(lambda (data) (string-join (mapcar #'symbol-name data) "\n"))
                        :read-lambda #'(lambda (text) (setq blood-dag--order (mapcar #'intern (split-string text "\n" t " +"))))
@@ -46,11 +53,31 @@ topo sort the graph.
 
 "
   (ghlog! "Building Dag")
-  (unless blood--straight-initialised (error "Can't build Packages DAG without straight"))
-  (straight--load-build-cache)
+  (unless (and (boundp'blood--straight-initialised)
+               blood--straight-initialised)
+    (error "Can't build Packages DAG without straight"))
+  (straight--load-build-cache) ;; -- turn this into a hook?
+  (blood-dag--build)
+  (ghlog! "Package Dependencies Mapping: ")
+  (dolist (package (sort (hash-table-keys blood-dag--graph) #'string-lessp))
+    (ilog! "%-20s -> %s" package (gethash package blood-dag--graph))
+    )
+  (glogxs!)
+  ;; calculate the ideal load order
+  (blood-dag--dfs)
+  (glog! "Package Order:")
+  (ilog! "[START] %s [END]" (string-join (mapcar #'symbol-name blood-dag--order) " -> "))
+  (glogxs!)
+  ;; write the order
+  (blood-cache! :dag (append blood-dag--order))
+  (glogxs!)
+  )
+
+(defun blood-dag--build ()
+  "build the dag by iterating over straight's metadata info"
   (let ((repos (append straight-recipe-repositories))
         )
-    (dolist (package (hash-table-keys straight--build-cache))
+    (dolist (package (hash-table-keys straight--build-cache)) ;; for each package in straight's cache
       (let* ((package-sym (intern package))
              (deps (mapcar #'intern (nth 1 (gethash package straight--build-cache))))
 
@@ -59,8 +86,8 @@ topo sort the graph.
              (afters (ensure-list (apply #'append (mapcar #'(lambda (x) (blood--packages-s-after x)) components))))
              (full-deps (append deps afters))
             )
-        (cond ((seq-contains-p repos package-sym) nil)
-              ((and (eq 1 (length full-deps)) (eq (car full-deps) 'emacs))
+        (cond ((seq-contains-p repos package-sym) nil) ;; skip unknowns
+              ((and (eq 1 (length full-deps)) (eq (car full-deps) 'emacs)) ;; root packages
                (puthash package-sym blood-dag--root blood-dag--graph)
                )
               (t
@@ -74,22 +101,12 @@ topo sort the graph.
         )
       )
     )
-  (ghlog! "Package Dependencies Mapping: ")
-  (dolist (package (sort (hash-table-keys blood-dag--graph) #'string-lessp))
-    (ilog! "%-20s -> %s" package (gethash package blood-dag--graph))
-    )
-  (glogxs!)
-  ;; calculate the ideal load order
-  (blood-dag--dfs)
-  (glog! "Package Order")
-  (ilog! "[START] %s [END]" (string-join (mapcar #'symbol-name blood-dag--order) " -> "))
-  (glogxs!)
-  ;; write the order
-  (blood-cache! :dag (append blood-dag--order))
-  (glogxs!)
   )
 
 (defun blood-dag--dfs ()
+  " DFS over the dag to get a linear order of package loading
+    returns a flag list
+"
   (ilog! "DFSing the Dag into a linear order")
   (let ((remaining (append (hash-table-keys blood-modules--package-component-map-ht)))
         ordered

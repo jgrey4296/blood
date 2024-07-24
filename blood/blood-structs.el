@@ -35,6 +35,7 @@
   "A Specification of a package used in a module"
   (id nil          :type blood--identifier-s)
   (disabled nil    :type bool)
+  (defer nil       :type bool)
   (debug nil       :type symbol :doc "trigger package specific debugging. nil|break|log")
   (recipe nil      :type symbol|blood--recipe)
   (after nil       :type list:symbol :doc "packages that must be loaded first")
@@ -43,8 +44,9 @@
   (on-init nil     :type lambda)
   (on-load nil     :type lambda)
   (on-ready nil    :type lambda)
-  (advice nil      :type list:blood--advice-s :doc "a list describing advice to add")
+  (advice nil      :type list:blood--advice-s :doc "a list of triples describing advice to add")
   (hooks  nil      :type list:pair :doc "a list describing hooks to add. (*hookvars :> fns)")
+  ;; TODO: possibly replace 'bind' with 'specs' for repeatability
   (bind   nil      :type list :doc "a list describing functions to call to make bindings")
   )
 
@@ -99,16 +101,19 @@
   (bootstrap nil      :type list:lambda :doc "a list of (lamdba (profile)) -> nil, functions to configure the backend")
   (activator nil      :type lambda :doc "(lambda (profile)) -> nil, activates the backend")
   (sync      nil      :type lambda :doc "(lambda (packages)) -> nil, for the backend to install given packages")
+  (clean     nil      :type lambda :doc "(lambda ()) -> nil, a hook for cleaning")
+  ;; TODO add a 'package load wrapper'. eg: for straight--load-package-autoloads
   )
 
 (cl-defstruct blood--advice-s
   "declarative advice struct"
   (targets nil :type list:symbol :doc "functions to advise")
-  (where   nil :type symbol :doc "where the advice goes")
+  (where   nil :type symbol      :doc "where the advice goes")
   (funcs   nil :type list:symbol :doc "the advice function symbols")
   )
 
 ;; Construction utils:
+;; TODO move these into ctors
 
 (defun blood-build-profile (name disabled default args)
   " Macro-processor for blood! profile definition"
@@ -234,16 +239,21 @@
 
 (cl-defun blood-uniq-id (obj)
   "Take an object and return a uniq id, as ...symbol?"
-  (cond ((blood--profile-s-p obj)
-         (blood--identifier-s-profile (blood--profile-s-id obj)))
-        ((blood--module-s-p obj)
-         (blood--id-sym (blood--module-s-id obj) :group t :module t))
-        ((blood--package-s-p obj)
-         (blood--id-sym (blood--package-s-id obj) :group t :module t :package t))
-        ((stringp obj)
-         (intern obj))
-        (t (error "Unrecognized id source type" obj))
+  (let ((result (cond ((blood--profile-s-p obj)
+                      (blood--identifier-s-profile (blood--profile-s-id obj)))
+                     ((blood--module-s-p obj)
+                      (blood--id-sym (blood--module-s-id obj) :group t :module t))
+                     ((blood--package-s-p obj)
+                      (blood--id-sym (blood--package-s-id obj) :group t :module t :package t))
+                     ((stringp obj)
+                      (intern obj))
+                     (t (error "Unrecognized id source type" obj))
+                     )
+                )
         )
+    (cl-assert (symbolp result))
+    result
+    )
   )
 
 (cl-defun blood--id-sym (obj &key (profile nil) (group nil) (module nil) (package nil))

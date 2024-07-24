@@ -20,8 +20,15 @@
 ;;
 ;;; Code:
 ;;-- end header
+(cl-assert (featurep 'blood-defs))
+(cl-assert (featurep 'blood-log))
+(cl-assert (featurep 'blood-utils))
 (llog! "Clean")
-(defvar blood--clean-queue nil)
+
+(defvar blood--clean-queue nil "a list of profile names to clean, or t if all")
+
+;; TODO: Enable cleaning all profiles
+;;
 
 (defun blood--clean-h ()
   "clean the current profile (or if arg, all profiles) build directory
@@ -29,20 +36,39 @@ type, as a symbol, can be: 'elc 'eln ...?
 
 "
   (hlog! "Cleaning")
-  (ilog! "TODO: Enable cleaning all profiles")
+  (run-hooks 'blood-clean-hook)
+  (hlog! "Clean Complete")
+  )
+
+(defun blood--clean--cache-h ()
+  "Delete the blood cache"
   (ilog! "Removing ELN Cache: %s" (expand-file-name blood--eln-cache-name blood-cache-dir))
   (delete-directory (expand-file-name blood--eln-cache-name blood-cache-dir) t)
-  (cond (blood--straight-initialised
-         (ilog! "Removing Build: %s" (straight--build-dir))
-         (delete-directory (straight--build-dir) t)
-         (delete-directory (straight--modified-dir))
-         (delete-file (straight--build-cache-file))
+  )
+
+(defun blood--clean--backend-h ()
+  "Clean a backend's files"
+  (cond ((and blood--backend-default (functionp (blood--backend-s-clean blood--backend-default)))
+         (funcall (blood--backend-s-clean blood--backend-default))
          )
         (t
-         (error "TODO: clean for non-straight installs")
-         )
+         (warn "No Clean function for current backend", blood--backend-default))
         )
-  (hlog! "Clean Complete")
+  )
+
+(defun blood--clean--package-src-h ()
+  "clean a package source code"
+  (warn "TODO: single package cleaning")
+  )
+
+(defun blood--clean--package-compilation-h ()
+  "clean compiled code for a package"
+  (warn "TODO: single package compilation cleaning")
+  )
+
+(defun blood--clean--autoloads-h ()
+  "clean generated autoloads"
+  (warn "TODO: autoload cleaning")
   )
 
 (provide 'blood-clean)

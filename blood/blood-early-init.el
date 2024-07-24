@@ -8,7 +8,9 @@
 
 (require 'cl-lib)
 (require 'blood-defs)
+(require 'blood-log)
 (require 'blood-utils)
+(require 'blood-deferral)
 
 (ilog! "Early Init: %s" (getenv "TERM"))
 (ilog! "CLI args: %s" command-line-args)
@@ -124,11 +126,19 @@
 ;;-- core package requires
 (require 'blood-core)
 (require 'blood-hooks)
-(require 'blood-deferral)
 (require 'blood-profile)
-(require 'blood-bootstrap)
 
 ;;-- end core package requires
+
+(cl-assert (featurep 'blood-defs))
+(cl-assert (featurep 'blood-log))
+(cl-assert (featurep 'blood-utils))
+(cl-assert (featurep 'blood-deferral))
+(cl-assert (featurep 'blood-core))
+(cl-assert (featurep 'blood-hooks))
+(cl-assert (featurep 'blood-profile))
+(cl-assert (featurep 'blood-bootstrap))
+(cl-assert (featurep 'blood-cmds))
 
 (provide 'blood-early-init)
 

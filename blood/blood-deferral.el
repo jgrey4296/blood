@@ -1,5 +1,6 @@
 ;;; macros.el -*- lexical-binding: t; -*-
 ;; A Simple load queue
+(require 'blood-log)
 (llog! "Deferrals")
 
 (defvar blood-defer--load-queue nil)
@@ -9,14 +10,6 @@
 (defvar blood-defer--skip-loads nil)
 
 (defconst blood-defer--load-trys 5)
-
-(defun blood-defer--start-h ()
-  (interactive)
-  (hlog! "Starting Deferrals")
-  (when blood-defer--load-timer
-    (error 'timer-already-exists))
-  (setq blood-defer--load-timer (run-with-idle-timer 4 0.25 #'blood-defer--queue-pop))
-  )
 
 (defmacro file! ()
   "Return the file of the file this macro was called."
@@ -28,19 +21,24 @@
 from doom."
   `(file-name-directory (file!)))
 
-(defun blood-defer--eval (wait-for instruction)
-  (if wait-for
-      (with-eval-after-load (car wait-for)
-        (blood-defer--eval (cdr wait-for) instruction))
-    (pcase instruction
-      (`(require ,x)
-       (require x))
-      (`(load ,x)
-       (load x))
-      (x
-       (ilog! "Unknown deferred eval instruction: %s" x)))))
+(defun inhibit! (&rest inhibited)
+  "WARNING: will break stuff. Add a feature to `features', so any `require's for it become no-ops.
+TODO advice load instead
+"
+  (mapcar #'provide inhibited)
+  )
+
+(defun blood-defer--start-h ()
+  "blood hook to start running deferred loads"
+  (interactive)
+  (hlog! "Starting Deferrals")
+  (when blood-defer--load-timer
+    (error 'timer-already-exists))
+  (setq blood-defer--load-timer (run-with-idle-timer 4 0.25 #'blood-defer--queue-pop))
+  )
 
 (defun blood-defer--queue-pop ()
+  "The main work function of blood deferral. pop a load off the queue, and do it "
   (when t ;; blood-defer--load-timer
     (ilog! "Deferred Loading, %s remain" (length blood-defer--load-queue))
     (pcase (pop blood-defer--load-queue)
@@ -49,8 +47,7 @@ from doom."
        (ilog! "after list %s : %s" x y)
        )
       ((and `(after ,x ,y try ,z) (guard (zerop z)))
-       ;; (with-eval-after-load (car x)
-       ;;   (blood-defer--eval (cdr x) y))
+       ;; (with-eval-after-load (car x) (blood-defer--eval (cdr x) y))
        (ilog! "Incomplete after, no more tries, adding to after-load-functions : %s " y)
        )
       (`(after ,x ,y try ,z)
@@ -75,6 +72,19 @@ from doom."
     (cancel-timer blood-defer--load-timer))
 )
 
+(defun blood-defer--eval (wait-for instruction)
+  " "
+  (if wait-for
+      (with-eval-after-load (car wait-for)
+        (blood-defer--eval (cdr wait-for) instruction))
+    (pcase instruction
+      (`(require ,x)
+       (require x))
+      (`(load ,x)
+       (load x))
+      (x
+       (ilog! "Unknown deferred eval instruction: %s" x)))))
+
 (defmacro local-load! (filename &optional noerror)
   (unless blood-defer--skip-loads
     `(load (file-name-concat (dir!) ,filename) ,noerror 'nomessage)
@@ -82,12 +92,12 @@ from doom."
   )
 
 (defmacro defer! (time &rest body)
-  `(unless blood-defer--skip-loads
-     (run-with-idle-timer ,time nil
-                          (lambda ()
-                            ,@body
-                            )
-                          )
+  (unless blood-defer--skip-loads
+     `(run-with-idle-timer ,time nil
+       (lambda ()
+         ,@body
+         )
+       )
      )
   )
 

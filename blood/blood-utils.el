@@ -21,43 +21,16 @@
 ;;; Code:
 ;;-- end header
 (require 'subr-x)
-(require 'blood-log)
 
-(defconst WIN-TYPES '(cygwin windows-ms ms-dos))
-
-(defconst MAC-TYPES '(darwin))
-
-(defconst BSD-TYPES '(darwin berkeley-unix gnu/kfreebsd))
-
-(defconst blood--eln-cache-name "eln-cache")
-
-(defvar   blood--caches (make-hash-table))
-
-(defconst blood--hook-laziness '(;; Not Lazy
-                                 :cold-start   -99
-                                 :bootstrap    -95
-                                 :clean        -90
-                                 :sync         -85
-                                 :build        -80
-                                 :run          -70
-                                 :profile-init -60
-                                 :module-init  -50
-                                 :module-config 25
-                                 :user-min      50
-                                 :user-max      90
-                                 :finalize      99
-                                 ) ;; Lazy
-  "Standard laziness values for hooks.
-if you're lazy, you run later than others.
-use `bloody-lazy!' to convert the values
-"
-  )
+(cl-assert (featurep 'blood-defs))
+(cl-assert (featurep 'blood-log))
 
 (llog! "Utils")
 
 ;;-- external calls
 
 (defun blood--dcall (dir prog &rest args)
+  "call an external program in dir"
   (unless (file-exists-p dir)
     (error "%s doesn't exist for call of %s" dir prog))
   (let ((default-directory dir))
@@ -132,13 +105,6 @@ use `bloody-lazy!' to convert the values
         )
   )
 
-(defun inhibit! (&rest inhibited)
-  "WARNING: will break stuff. Add a feature to `features', so any `require's for it become no-ops.
-TODO advice load instead
-"
-  (mapcar #'provide inhibited)
-  )
-
 ;;-- macro utils
 
 (defun blood--lambda! (data)
@@ -150,6 +116,7 @@ This isn't a macro though, because we don't want to actually construct it yet.
                   data)))
 
 (defmacro mquote! (e)
+  "util for quoting"
   (declare (indent defun))
   (if (eq (car-safe e) 'quote)
       e
@@ -246,10 +213,6 @@ Pass a third argument to add to the cache instead of completely re-write
   )
 
 ;;-- end caching
-
-;;-- Message control
-
-;;-- end Message control
 
 (provide 'blood-utils)
 ;;; blood-utils.el ends here

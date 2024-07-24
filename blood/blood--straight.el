@@ -21,6 +21,7 @@
 ;;; Code:
 ;;-- end header
 (llog! "Straight boostrapper")
+(require 'blood-structs)
 (require 'env)
 
 (defvar blood--bootstrap-straight-location "repos/straight.el" "relative path for straight to isntall into")
@@ -34,6 +35,7 @@
 (defvar blood--bootstrap-straight-single-branch t "whether straight should clone only the branch used")
 
 (defconst blood--bootstrap-straight-default-recipes
+  "adapated from doom"
   '((org-elpa           :local-repo nil)
     (melpa              :type git :host github
                         :repo "melpa/melpa"
@@ -55,26 +57,19 @@
   )
 
 (defvar blood--straight-recipes nil
-  "Additional registered recipes for straight"
+  "User registered recipes for straight"
   )
 
-(defvar blood--straight-initialised nil)
+(defvar blood--straight-initialised nil "marker variable for marking that straight is initialised")
 
-(defun in-straight! (&rest args)
-  (expand-file-name (apply #'file-name-concat "straight" args) blood-cache-dir))
-
-(defun blood--bootstrap-straight-profile-build-dir (name-or-spec)
-  " Get the build directory of the profile "
-  (let* ((name (blood-uniq-id name-or-spec))
-         (spec (gethash name blood-profile--declared-ht))
-         (paths (blood--profile-s-paths spec))
-         )
-    (cond ((and paths (blood--paths-s-build paths))
-           (blood--paths-s-build paths))
-          (t
-           (format "build-%s-%s" emacs-version name))
-          )
-    )
+(defconst blood--bootstrap-straight-backend-default (blood--backend-s :name 'straight
+                                                                      :require 'straight
+                                                                      :bootstrap (list #'blood--bootstrap-straight)
+                                                                      :activator #'blood--bootstrap-straight-init
+                                                                      :sync #'blood--sync-straight
+                                                                      :clean #'blood--clean-straight
+                                                                      )
+  "The default blood--backend-s for straight"
   )
 
 (defun blood--bootstrap-straight (spec)
@@ -156,26 +151,6 @@ adapted from doom--ensure-straight
   (glogx!)
   )
 
-(defun blood--bootstrap-straight-build-dir-advice (&rest segments)
-  " for overriding 'straight--build-dir to build packages
-in a profile specific subdirectory
-
-eg: emacs.d/straight/build-28.2
-->  emacs.d/straight/build-28.2-{profile}
-"
-  (let* ((spec (blood-profile-current))
-         (profile-build-dir (or (blood--paths-s-build (blood--profile-s-paths spec))
-                                (format "build-%s-%s" emacs-version (blood-uniq-id spec))))
-         )
-
-    (apply #'straight--dir profile-build-dir segments)
-    )
-  )
-
-(defun blood--bootstrap-straight-add-advice ()
-  (advice-add 'straight--build-dir :override #'blood--bootstrap-straight-build-dir-advice)
-  )
-
 (defun blood--sync-straight (packages)
   "call straight-use-package on each member of the input list"
   (ghlog! "Sync: Installing Module Components using Straight: %s" (blood-uniq-id (blood-profile-current)))
@@ -195,6 +170,47 @@ eg: emacs.d/straight/build-28.2
     (straight--transaction-finalize)
     (glogx!)
     )
+  )
+
+(defun blood--clean-straight ()
+  (ilog! "Cleaning Straight: %s" (straight--build-dir))
+  (delete-directory (straight--build-dir) t)
+  (delete-directory (straight--modified-dir))
+  (delete-file (straight--build-cache-file))
+  )
+
+(defun blood--bootstrap-straight-profile-build-dir (name-or-spec)
+  " Get the build directory of the profile "
+  (let* ((name (blood-uniq-id name-or-spec))
+         (spec (gethash name blood-profile--declared-ht))
+         (paths (blood--profile-s-paths spec))
+         )
+    (cond ((and paths (blood--paths-s-build paths))
+           (blood--paths-s-build paths))
+          (t
+           (format "build-%s-%s" emacs-version name))
+          )
+    )
+  )
+
+(defun blood--bootstrap-straight-build-dir-advice (&rest segments)
+  " for overriding 'straight--build-dir to build packages
+in a profile specific subdirectory
+
+eg: emacs.d/straight/build-28.2
+->  emacs.d/straight/build-28.2-{profile}
+"
+  (let* ((spec (blood-profile-current))
+         (profile-build-dir (or (blood--paths-s-build (blood--profile-s-paths spec))
+                                (format "build-%s-%s" emacs-version (blood-uniq-id spec))))
+         )
+
+    (apply #'straight--dir profile-build-dir segments)
+    )
+  )
+
+(defun blood--bootstrap-straight-add-advice ()
+  (advice-add 'straight--build-dir :override #'blood--bootstrap-straight-build-dir-advice)
   )
 
 (defun blood--package-to-straight-recipe (package-spec)
@@ -221,6 +237,9 @@ returns a list for straight"
     )
   )
 
+(defun in-straight! (&rest args)
+  "util to create a path string inside the blood straight dir"
+  (expand-file-name (apply #'file-name-concat "straight" args) blood-cache-dir))
 
 ;; TODO handle straight's popups that don't work in noninteractive
 

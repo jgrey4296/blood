@@ -20,9 +20,15 @@
 ;;
 ;;; Code:
 ;;-- end header
+(cl-assert (featurep 'blood-defs))
+(cl-assert (featurep 'blood-log))
+(cl-assert (featurep 'blood-utils))
 (llog! "Native")
 
+;; TODO: maybe cache some of this?
+
 (defun blood-native--setup-h ()
+  "blood hook to setup native comp"
   (ghlog! "Setting up Native Compilation")
   (setq native-compile-target-directory (file-name-directory (expand-file-name
                                                               (file-name-concat blood--eln-cache-name
@@ -60,8 +66,8 @@
     (advice-add 'native-compile-async   :before    #'(lambda (fls &rest args) (log! :debug "Async Native Compile: %s" fls)))
     (advice-add 'comp-run-async-workers :before    #'(lambda () (log! :debug "Starting async compilation: %s : %s : %s" comp-files-queue comp-native-version-dir native-compile-target-directory)))
     )
-  ;; (add-hook 'kill-emacs-query-functions #'blood-native--clear-compilation-queue-on-exit)
-  ;; (add-hook 'kill-emacs-hook #'blood-native--noninteractive-clear-compilation-queue)
+  ;; (add-hook 'kill-emacs-query-functions #'blood-native--clear-compilation-queue-on-exit-h)
+  ;; (add-hook 'kill-emacs-hook #'blood-native--noninteractive-clear-compilation-queue-h)
 
   (ilog! "Native Compilation Activated")
   (ilog! "Deny Lists have been cleared")
@@ -80,8 +86,8 @@
         )
   )
 
-(defun blood-native--clear-compilation-queue-on-exit ()
-  " "
+(defun blood-native--clear-compilation-queue-on-exit-h ()
+  "An exit hook for catching unfinished compilation "
   (let ((read-answer-short 'auto))
     (pcase (read-answer (format "There are %s entries remaining in the comp-files-queue, what do you want to do?" (length comp-files-queue))
                         '(("clear" ?x "Clear the Queue")
@@ -96,7 +102,8 @@
     )
   )
 
-(defun blood-native--noninteractive-clear-compilation-queue ()
+(defun blood-native--noninteractive-clear-compilation-queue-h ()
+  "hook to clear compilation queue on non-interactive exit"
   (if noninteractive
       (setq comp-files-queue nil)
       )

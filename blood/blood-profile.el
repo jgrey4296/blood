@@ -20,10 +20,11 @@
 ;;
 ;;; Code:
 ;;-- end header
+(cl-assert (featurep 'blood-defs))
+(cl-assert (featurep 'blood-log))
+(cl-assert (featurep 'blood-utils))
 (llog! "Profile Lib")
 (require 'blood-structs)
-
-(defconst BLOOD-PROFILE-FILE-PATTERN "profile\\(-.+\\)?.el" "blood will search and load all profiles in files with this name")
 
 (defvar blood-profile--declared-ht     (make-hash-table) "All declared profiles, which can be activated later. Use `blood-profile--register' to add. keys are profile names as symbols ")
 
@@ -84,7 +85,7 @@ sets paths for profile,
   (car blood-profile-active-specs)
   )
 
-(defun blood-user-files! ()
+(defun blood-user-files-h ()
   "set the location of the user emacs directory from the current profile"
   (setq user-emacs-directory (expand-file-name (file-name-concat "profiles" (blood--profile-s-name (blood-profile-current)) "user-files") blood-cache-dir))
   (ilog! "User Emacs Directory Set to: %s" user-emacs-directory)
@@ -93,14 +94,14 @@ sets paths for profile,
       )
   )
 
-(defun blood-auto-saves! ()
+(defun blood-auto-saves-h ()
   "set the location of the auto-save-dir using the current profile"
   (setq auto-save-dir (expand-file-name (file-name-concat (blood--profile-s-name (blood-profile-current)) "auto-saves") blood-cache-dir)
         auto-save-list-file-prefix (file-name-concat auto-save-dir "save-"))
   )
 
-(add-hook 'blood-profile--post-activate-hook #'blood-user-files!)
-(add-hook 'blood-profile--post-activate-hook #'blood-auto-saves!)
+(add-hook 'blood-profile--post-activate-hook #'blood-user-files-h)
+(add-hook 'blood-profile--post-activate-hook #'blood-auto-saves-h)
 
 (provide 'blood-profile)
 ;;; blood-profile.el ends here

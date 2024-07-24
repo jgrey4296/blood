@@ -20,22 +20,41 @@
 ;;
 ;;; Code:
 ;;-- end header
+(cl-assert (featurep 'blood-defs))
+(cl-assert (featurep 'blood-log))
+(cl-assert (featurep 'blood-utils))
 (llog! "Report Lib")
-(blood-register-cache! :report
-                       #'(lambda (data) data))
+(blood-register-cache! :report #'(lambda (data) data))
 
-(defun report! ()
-  (interactive)
-  (hlog! "TODO: Generate Report")
-  ;; load order, memory usage, load time, etc
+(defun blood-report--profile ()
+
+  )
+
+(defun blood-report--load-order ()
+
+  )
+
+(defun blood-report--memory ()
+
+  )
+
+(defun blood-report--load-time ()
 
   )
 
 (defun blood-report-h ()
-  "print a report on the current profile:
+  "Hook for printing a report on the current profile:
 everything in its spec (name, source, default, disabled, backend, etc)
 "
   (hlog! "TODO Report")
+
+  )
+
+(defun report! ()
+  "interactive report on blood state"
+  (interactive)
+  (hlog! "TODO: Generate Report")
+  ;; load order, memory usage, load time, etc
 
   )
 

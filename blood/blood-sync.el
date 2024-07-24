@@ -20,6 +20,9 @@
 ;;
 ;;; Code:
 ;;-- end header
+(cl-assert (featurep 'blood-defs))
+(cl-assert (featurep 'blood-log))
+(cl-assert (featurep 'blood-utils))
 (llog! "Sync")
 (require 'blood-dag)
 
@@ -149,6 +152,7 @@
   )
 
 (defun blood-sync--find-with-fd (base source)
+  "TODO: use blood--find-with-fd instead"
   (ilog! "Searching: %s" (expand-file-name base source))
   (cond ((executable-find "fdfind")
          (blood--call "fdfind" "-i" BLOOD-MODULE-FILE-PATTERN--FD (expand-file-name base source))

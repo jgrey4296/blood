@@ -15,8 +15,8 @@
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
-;;
-;;
+;;  General hooks for blood, intended for 'after-init-hook.
+;;  Other modules, like blood-profile, declare their own hooks.
 ;;
 ;;; Code:
 ;;-- end header
@@ -73,8 +73,8 @@
   (glogx!)
   )
 
-(defun doom-restore-menu-bar-in-gui-frames-h (&optional frame)
-  "from doom for handling GUI's on mac with no menu bar"
+(defun blood-menu-bar-fix-h (&optional frame)
+  "adapted from doom-restore-menu-bar-in-gui-frames-h"
   (when-let (frame (or frame (selected-frame)))
     (when (display-graphic-p frame)
       (set-frame-parameter frame 'menu-bar-lines 1)))

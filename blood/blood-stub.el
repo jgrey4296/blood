@@ -17,6 +17,11 @@
 
   )
 
+(defun stub-package! ()
+  (interactive)
+
+  )
+
 (defun blood-stub-h ()
   ""
   (hlog! "TODO: Stub Module")

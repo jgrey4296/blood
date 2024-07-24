@@ -38,7 +38,7 @@
   )
 
 (defmacro llog! (text &rest args)
-  "A Load message"
+  "A Load message log"
   (declare (indent defun))
   (when debug-on-error
     `(log! :debug "Loading: %s" (format ,text ,@args))
@@ -46,7 +46,7 @@
   )
 
 (defmacro dlog! (text &rest args)
-  " A Simple, debug message when 'debug-on-error is true"
+  " A Simple, debug message when 'debug-on-error is true at :debug level"
   (declare (indent defun))
   `(when debug-on-error
        (log! :debug ,text ,@args)
@@ -59,7 +59,7 @@
   )
 
 (defmacro ghlog! (entermsg &rest args)
-  "Enter a group"
+  "Enter a group log"
   (declare (indent defun))
   `(progn
      (cl-incf blood--log-group-level 2)
@@ -75,7 +75,7 @@
   )
 
 (defmacro glogx! (&rest rest)
-  "Exit the last group"
+  "Exit the last group after executing &rest"
   (declare (indent defun))
   `(prog1
        (progn ,@rest)
@@ -84,6 +84,7 @@
   )
 
 (defun glogxs! (&optional msg)
+  "log a message and reset the group level"
   (log! :info "%s" (or msg ""))
   (cl-decf blood--log-group-level 2)
   (if (< blood--log-group-level 2) (setq blood--log-group-level 2))
