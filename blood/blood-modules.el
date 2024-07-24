@@ -25,21 +25,26 @@
 (require 'blood-trace)
 (require 'blood-dag)
 (require 'blood-structs)
+(require 'blood-deferral)
+(require 'blood-packages)
 
 (defconst BLOOD-MODULE-FILE-PATTERN--FD ".*(m-.+|module|module-.+).el$"  "blood will search and load all files named this in module directories, to get package specs")
 
 (defvar blood-modules--declared-components-ht (make-hash-table) "Maps group:module:package to package spec. sym -> list[component]. `use!` adds to this.")
+
 (defvar blood-modules--package-component-map-ht (make-hash-table) "Maps packages to all modules they are part of")
 
 (defun blood-modules--sym-from-parts (group mod &optional package)
   "Build a symbol from a group, a module name, and maybe a package to uniquely
-identify a module component"
+identify a module component
+TODO: refactor into blood-structs
+"
   (intern (if package
               (format "%s:%s:%s" group mod package)
             (format "%s:%s" group mod))))
 
 (defun blood-modules--init-packages-h ()
-  "Start the activeprofile's modules"
+  "Start the active profile's modules"
   (blood--expand-loadpath)
   (hlog! "Initalizing Packages")
   (let* ((profile (blood-profile-current))
@@ -48,14 +53,7 @@ identify a module component"
          )
     (ilog! "Found %s components to initialize" (length components))
     (dolist (package-spec components)
-      (let ((package-sym (blood--identifier-s-package (blood--package-s-id package-spec))))
-        (ghlog! "Initialising: %s" package-sym)
-        (funcall (blood--package-s-pre-load package-spec))
-        ;; TODO straight--load-package-autoloads
-        ;; TODO setup advice
-        ;; TODO setup hooks
-        (glogxs!)
-        )
+      (blood-packages--init package-spec)
       )
     )
   )
@@ -70,14 +68,7 @@ identify a module component"
     (ghlog! "Components to load: %s" (length specs))
     ;; Load the dag calculated order
     (dolist (comp-spec specs)
-      (let* ((package-sym (blood--identifier-s-package (blood--package-s-id comp-spec))))
-        (ghlog! "Loading: %s" package-sym)
-        (blood-trace--memory-pre package-sym)
-        (require package-sym)
-        (funcall (blood--package-s-post-load comp-spec))
-        (blood-trace--memory-post package-sym)
-        (glogxs!)
-        )
+      (blood-packages--config comp-spec)
       )
     )
   (glogxs!)
