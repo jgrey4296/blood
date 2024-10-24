@@ -59,17 +59,15 @@
 (defun blood--expand-loadpath ()
   "Expand the Loadpath completely"
   (glog! "Expanding Loadpath")
-  (setq load-path (append
-                   ;; ELN cache
-                   (apply #'append (mapcar #'(lambda (x) (blood--find-with-fd x nil nil "d")) native-comp-eln-load-path))
-                   ;; profile build dir
-                   (blood--find-with-fd blood-profile--build-dir nil nil "d")
-                   ;; installation directory
-                   (blood--find-with-fd blood-profile--installation-dir nil nil "d")
-                   ;; existing load-path
-                   load-path
-                   )
+  (let ((eln-cache (apply #'append (mapcar #'(lambda (x) (blood--find-with-fd x nil nil "d" 1)) native-comp-eln-load-path)))
+        (profile-build (blood--find-with-fd blood-profile--build-dir nil nil "d" 1))
+        (profile-install (blood--find-with-fd blood-profile--installation-dir nil nil "d" 1))
         )
+    (log! :debug "From eln-cache: %s" eln-cache)
+    (log! :debug "From Build: %s" profile-build)
+    (log! :debug "From install: %s" profile-install)
+    (setq load-path (cl-remove-duplicates (append eln-cache profile-build profile-install load-path)))
+  )
   (ilog! "New Loadpath: %s" load-path)
   (glogxs!)
   )
