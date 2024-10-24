@@ -13,6 +13,11 @@
   (ilog! "TODO")
   )
 
+(ert-deftest blood-test-deferral-sanity ()
+  :tags '(sanity)
+  (should (eq 1 1))
+  )
+
 (ert-deftest blood-test-deferral-setup ()
   "Tests the rendering of `quote' symbols in `pp-to-string'."
   (blood--test-setup-deferral)
