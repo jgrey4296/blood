@@ -15,6 +15,8 @@
 
 (defvar blood--level-log-fmt "(%s) : %s\n")
 
+(defvar blood--log-prefix "Blood")
+
 (defun blood-set-loglevel (level)
   (unless (seq-contains-p blood--log-levels level)
     (error "Bad Error Level: %s" level))
@@ -22,7 +24,7 @@
   )
 
 (defmacro log! (level text &rest args)
-  " A Simple, debug message when 'debug-on-error is true"
+  " A Simple, debug message sent to *Messages*"
   (declare (indent defun))
   (if (and (seq-position blood--log-levels level)
            (<= (seq-position blood--log-levels blood--current-log-level) (seq-position blood--log-levels level)))
@@ -58,7 +60,10 @@
 
 (defmacro hlog! (text &rest args)
   "A Header Log"
-  `(log! :info "\n%s %s %s" blood--log-header-line (format ,text ,@args) blood--log-header-line)
+  `(log! :info "\n%s %s %s"
+     blood--log-header-line
+     (format ,text ,@args)
+     blood--log-header-line)
   )
 
 (defmacro ghlog! (entermsg &rest args)
@@ -66,7 +71,10 @@
   (declare (indent defun))
   `(progn
      (cl-incf blood--log-group-level 2)
-     (log! :info "%s >> Blood: %s" (make-string blood--log-group-level ?-) (format ,entermsg ,@args)))
+     (log! :info "%s >> %s : %s"
+       (make-string blood--log-group-level ?-)
+       blood--log-prefix
+       (format ,entermsg ,@args)))
   )
 
 (defmacro glog! (entermsg &rest args)
@@ -74,7 +82,10 @@
   (declare (indent defun))
   `(progn
      (cl-incf blood--log-group-level 2)
-     (log! :info "%s >> Blood: %s" (make-string blood--log-group-level ? ) (format ,entermsg ,@args)))
+     (log! :info "%s >> %s : %s"
+       (make-string blood--log-group-level ? )
+       blood--log-prefix
+       (format ,entermsg ,@args)))
   )
 
 (defmacro glogx! (&rest rest)
@@ -98,5 +109,9 @@
   (declare (indent defun))
   `(log! :info "%s > %s" (make-string (+ 2 blood--log-group-level) ? ) (format ,msg ,@args))
   )
+
+(defun blood--clear-log-prefix ()
+  "Clear the logging prefix"
+  (setq blood--log-prefix ""))
 
 (provide 'blood-log)

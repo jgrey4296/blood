@@ -18,17 +18,18 @@
 
 ;;-- arg processing
 ;; Doing this early, so a set profile or command is usable in the init file.
+;; TODO allow --cmd=%s
 (let (processed-cli-args cmd profile top)
   (while command-line-args
     (setq top (pop command-line-args))
-    (cond ((equal "--sync"     top) (setq blood--cmd 'sync))
-          ((equal "--profile"  top) (setq blood-profile--default (pop command-line-args)))
-          ((equal "--profiles" top) (setq blood--cmd 'profiles))
-          ((equal "--stub"     top) (setq blood--cmd 'stub))
-          ((equal "--report"   top) (setq blood--cmd 'report))
-          ((equal "--batch"    top) (setq blood--cmd 'batch))
-          ((equal "--clean"    top) (setq blood--cmd 'clean))
-          ((equal "-h"         top) (setq blood--cmd 'help))
+    (cond ((string-equal "--sync"     top) (setq blood--cmd 'sync))
+          ((string-equal "--profile"  top) (setq blood-profile--default (pop command-line-args)))
+          ((string-equal "--profiles" top) (setq blood--cmd 'profiles))
+          ((string-equal "--stub"     top) (setq blood--cmd 'stub))
+          ((string-equal "--report"   top) (setq blood--cmd 'report))
+          ((string-equal "--batch"    top) (setq blood--cmd 'batch))
+          ((string-equal "--clean"    top) (setq blood--cmd 'clean))
+          ((string-equal "-h"         top) (setq blood--cmd 'help))
           (t (push             top processed-cli-args))
           )
     )
@@ -36,11 +37,6 @@
         ;; noninteractive (seq-contains-p blood--noninteractive-cmds blood--cmd)
         inhibit-message t
         )
-  (hlog! "BLOOD")
-  (ilog! "Profile: %s" blood-profile--default)
-  (ilog! "Command: %s" blood--cmd)
-  (ilog! "Remaining CLI Args:  %s"  command-line-args)
-  (hlog! "-----")
   )
 
 ;;-- end arg processing
@@ -48,18 +44,18 @@
 ;;-- debug startup
 ;; Recognize and setup debugging:
 (when (or (getenv "DEBUG") init-file-debug)
-  (hlog! "Setting Debug")
+  (ilog! "!!! Setting Debug")
   (setq init-file-debug t
         debug-on-error  t
         noninteractive nil
         blood--trace-memory t
         )
+  (blood-set-loglevel :debug)
   ;; todo - load-file tracking
   )
 
 ;;-- end debug startup
 
-(blood--force-terminal)
 ;;-- startup vars
 ;; pre-Startup Performance adjustments
 (setq gc-cons-threshold            most-positive-fixnum ;; Don't run gc till after startup
@@ -100,8 +96,8 @@
                                           (if (and (not (memq system-type WIN-TYPES)) (>= libgnutls-version 30605))
                                               ":+VERS-TLS1.3")
                                           ":+VERS-TLS1.2"))
-      gnutls-min-prime-bits 3072 ;; `gnutls-min-prime-bits' is set based on recommendations from https://www.keylength.com/en/4/
-      tls-checktrust gnutls-verify-error
+      gnutls-min-prime-bits     3072 ;; `gnutls-min-prime-bits' is set based on recommendations from https://www.keylength.com/en/4/
+      tls-checktrust            gnutls-verify-error
       ;; Emacs is built with gnutls.el by default, so `tls-program' won't
       ;; typically be used, but in the odd case that it does, we ensure a more
       ;; secure default for it (falling back to `openssl' if absolutely
@@ -118,11 +114,11 @@
 ;;-- end startup vars
 
 (glog! "Early Init Values")
-(ilog! "Load Path: %s\n\n" load-path)
-(ilog! "ELN: %s\n" native-comp-eln-load-path)
+(ilog! "Load Path: %s\n\n"  load-path)
+(ilog! "ELN: %s\n"          native-comp-eln-load-path)
 (ilog! "User Emacs Dir: %s" user-emacs-directory)
-(ilog! "User Init: %s" user-init-file)
-(glogx!)
+(ilog! "User Init: %s"      user-init-file)
+(glogxs!)
 
 ;;-- core package requires
 (glog! "Loading Core Packages")

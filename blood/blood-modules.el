@@ -43,12 +43,12 @@ TODO: refactor into blood-structs
 (defun blood-modules--init-packages-h ()
   "Start the active profile's modules"
   (blood--expand-loadpath)
-  (hlog! "Initalizing Packages")
+  (hlog! "Initialising Packages")
   (let* ((profile (blood-profile-current))
          (mod-files (blood-sync--module-specs-of-profile profile)) ;; get active modules
          (components  (blood-sync--collect-module-component-specs mod-files 'allow))
          )
-    (ilog! "Found %s components to initialize" (length components))
+    (ilog! "Found %s components to initialise" (length components))
     (dolist (package-spec components)
       (blood-packages--init package-spec)
       )
@@ -60,7 +60,7 @@ TODO: refactor into blood-structs
   (hlog! "Configuring and Loading Components")
   (blood-read-cache! :dag)
   (let* ((components (apply #'append (mapcar #'(lambda (x) (gethash x blood-modules--package-component-map-ht)) blood-dag--order)))
-         (specs      (apply #'append (mapcar #'(lambda (y) (gethash y blood-modules--declared-components-ht)) components)))
+         (specs      (apply #'append (mapcar #'(lambda (y) (list (gethash y blood-modules--declared-components-ht))) components)))
         )
     (ghlog! "Components to load: %s" (length specs))
     ;; Load the dag calculated order

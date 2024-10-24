@@ -13,21 +13,21 @@
   (require 'blood-sync)
   (require 'blood-dag)
   (require 'blood-modules)
-  (add-hook 'after-init-hook #'blood-bootstrap-h (bloody-lazy! :bootstrap))
+  (add-hook 'after-init-hook #'blood-bootstrap-h          (bloody-lazy! :bootstrap))
   (add-hook 'after-init-hook #'blood-sync-h               (bloody-lazy! :sync))
   (add-hook 'after-init-hook #'blood--setup-default-h     (bloody-lazy! :run))
   (add-hook 'after-init-hook #'blood-sync--complete-h     (bloody-lazy! :finalize))
   ;;(when ('build in cli-args) (add-hook 'after-init-hook #'blood--build-packages (plist-get blood-hook-priorities :build)))
   (add-hook 'after-init-hook #'(lambda () (ilog! "TODO: build version report")) (bloody-lazy! :build))
-  (when ,is-interactive (add-hook 'after-init-hook #'(lambda () (require 'evil) (evil-mode)) (bloody-lazy! :finalize 1)))
-
+  (unless noninteractive
+    (add-hook 'after-init-hook #'blood--expand-loadpath (bloody-lazy! :finalize))
+    (add-hook 'after-init-hook #'(lambda () (require 'evil) (evil-mode)) (bloody-lazy! :finalize 1)))
   )
 
 (defun blood--cmd-clean ()
   " cmd to clean bloods cache and installation "
   (require 'blood-clean)
-  ;; load pincushion
-  ;; Queue the packages for cleaning
+  ;; TODO Queue the packages for cleaning
   (add-hook 'after-init-hook #'blood--clean-h (bloody-lazy! :clean))
   )
 
@@ -47,7 +47,6 @@
   " blood's main cmd: trigger loading a profile and its modules/packages "
   ;; (ilog! "Setting up activation hooks: %s" ,profile-name)
   (require 'blood--native)
-  (require 'blood-modules)
   (add-hook 'after-init-hook #'blood-bootstrap-h                     (bloody-lazy! :bootstrap))
   (add-hook 'after-init-hook #'blood--setup-default-h                (bloody-lazy! :run))
   (add-hook 'after-init-hook #'blood-profile-start-h                 (bloody-lazy! :profile-init))
@@ -58,6 +57,14 @@
     (add-hook 'after-init-hook #'blood-trace--memory-report-h         (bloody-lazy! :module-config 2))
     )
   (add-hook 'after-init-hook #'blood-defer--start-h                  (bloody-lazy! :finalize))
+  )
+
+(defun blood--cmd-help ()
+  (hlog! "Help Cmd")
+  (add-hook 'after-init-hook (lambda ()
+                               (ilog! "Basic Blood Help")
+                               )
+            (bloody-lazy! :finalize))
   )
 
 (provide 'blood-cmds)

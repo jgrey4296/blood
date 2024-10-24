@@ -30,7 +30,7 @@
 
 (defvar blood--package-declaration-failures nil)
 
-(defcustom blood-sync-module-find-fn #'blood-sync--find-with-fd "The function used for searching for `Blood-module-file-pattern` module files, takes two arguments: the search root, and the profile source location to `expand-file-name` it against''" :type 'symbol)
+(defcustom blood-sync-module-find-fn #'blood--find-with-fd "The function used for searching for `Blood-module-file-pattern` module files, takes two arguments: the search root, and the profile source location to `expand-file-name` it against''" :type 'symbol)
 
 (blood-register-cache! :modules #'(lambda (data) (string-join data "\n")))
 (blood-register-cache! :active-modules #'(lambda (data) (string-join data "\n")))
@@ -78,9 +78,9 @@
 
 (defun blood-sync--module-specs-of-profile (spec)
   "given a PROFILE spec, get all active modules -> list of paths to active module definitions"
-  (glog! "Getting Active Module Specs")
-  (let* ((module-locs (blood--paths-s-modules (blood--profile-s-paths spec))) ;; list of paths
-         (modules (blood--profile-s-modules spec)) ;; declared active modules
+  (ghlog! "Getting Active Module Specs: %s" (blood-uniq-id spec))
+  (let* ((modules (blood--profile-s-modules spec)) ;; declared active modules
+         (module-locs (blood--paths-s-modules (blood--profile-s-paths spec))) ;; list of paths
          (module-symbols (mapcar #'(lambda (x) (blood-uniq-id x)) modules))
          (source (blood--identifier-s-source (blood--profile-s-id spec)))
          found-modules
@@ -88,22 +88,25 @@
          )
     ;; Find the module definitions
     (dolist (base module-locs)
-      (let ((result (funcall blood-sync-module-find-fn base (file-name-directory source))))
-        (if (zerop (string-to-number (car-safe result)))
-            (setq found-modules (append (mapcar #'file-truename (split-string (cdr result) "\n" t " +")) found-modules))
-          (warn "Searching in %s failed: %s" base result)
+      (let* ((result (funcall blood-sync-module-find-fn base (file-name-directory source) "\.el"))
+             (filtered (cl-remove-if #'blood-sync--filter-found-files result))
+            )
+        (if (zerop (string-to-number (car-safe filtered)))
+            (setq found-modules (append (mapcar #'file-truename filtered) found-modules))
+          (log! :warn "Searching in %s failed: %s" base result)
           )
         )
       )
     (ilog! "Search Found: %s modules" (length found-modules))
     (blood-cache! :modules found-modules)
+    ;; found -> active, if
     (setq active-modules (cl-remove nil (mapcar #'(lambda (x)
                                                     (let* ((dir-parts (reverse (split-string x "/" t " +")))
                                                            (sym (blood-modules--sym-from-parts (caddr dir-parts)
                                                                                                (cadr dir-parts)))
                                                            (in-active-modules (memq sym module-symbols))
                                                            )
-                                                      (if in-active-modules x nil)))
+                                                      (unless in-active-modules x)))
                                                 found-modules)))
     (ilog! "Active Modules In Profile: %s" (length active-modules))
     (blood-cache! :active-modules active-modules)
@@ -113,67 +116,64 @@
     )
   )
 
+(defun blood-sync--filter-found-files (path)
+  "For selecting only module files in module-specs-of-profile.
+Returns t for files that should be ignored
+"
+  (let ((base (file-name-base path)))
+    (or (string-prefix-p "+" base)
+        (string-equal base "early-init")
+        (string-equal base "init")
+        )
+    )
+  )
+
 (defun blood-sync--collect-module-component-specs (files &optional allow-loads)
   "given a list of module component file paths, load them -> list of package spec structs (see blood-modules--build-spec)"
-  (glog! "Collecting Module Component Specs from discovered modules: %s" files)
+  (ghlog! "Collecting Module Component Specs from discovered modules" )
   (clrhash blood-modules--declared-components-ht)
   (let ((blood-defer--skip-loads (not allow-loads)))
     (dolist (file files)
       ;; Load module definition, suppressing any deferred loads,
       ;; but adding package declarations to `blood-modules--declared-components-ht`
       (llog! "%s (package collection)" file)
+      (ilog! "Loading %s" file)
       (load file nil t)
       )
-    (ilog! "Loaded Module Specs: %s" (mapcar #'(lambda (x) (if x (blood-uniq-id x)))
-                                             (apply #'append (hash-table-values blood-modules--declared-components-ht))))
-    (prog1 (apply #'append (hash-table-values blood-modules--declared-components-ht))
+    (ghlog! "Loaded Module Specs:")
+    (dolist (spec (hash-table-values blood-modules--declared-components-ht))
+      (ilog! "%s" (blood-uniq-id spec))
+      )
+    (glogx!)
+    (prog1 (hash-table-values blood-modules--declared-components-ht)
       (glogx!))
     )
   )
 
-(defun blood-sync--native-comp (components)
+(defun blood-sync--native-comp (components) ;; -> nil
   "Native compile packages marked as such"
   ;; native-compile-async
-  (ghlog! "TODO Native Compiling: %s" components)
+  (ilog! "TODO Native Compiling: %s" (length components))
   (unless (featurep 'native-compile) (error "Can't Native Compile"))
-  (prog1 nil
-    (glogx!))
   )
 
-(defun blood-sync--byte-comp (components)
+(defun blood-sync--byte-comp (components) ;; -> nil
   "Just byte compile a spec's packages"
   ;; byte-recompile-directory
   ;; async-byte-recompile-directory
   ;; byte-compile-dest-file
-  (ghlog! "TODO Byte Compiling: %s" components)
+  (ilog! "TODO Byte Compiling: %s" (length components))
 
-  (prog1 nil
-    (glogx!))
   )
 
-(defun blood-sync--generate-autoloads (components)
+(defun blood-sync--generate-autoloads (components) ;; -> nil
   ;; todo - autoloads generator
-  (ghlog! "TODO Generating Autoloads: %s" components)
+  (ilog! "TODO Generating Autoloads: %s" (length components))
   nil
   ;; loaddefs-generate
   ;; loaddefs-generate-batch
   ;; make-directory-autoloads
-  (glogx!)
   )
-
-(defun blood-sync--find-with-fd (base source)
-  "TODO: use blood--find-with-fd instead"
-  (ilog! "Searching: %s" (expand-file-name base source))
-  (cond ((executable-find "fdfind")
-         (blood--call "fdfind" "-i" BLOOD-MODULE-FILE-PATTERN--FD (expand-file-name base source))
-         )
-        ((executbale-find "fd")
-         (blood--call "fd" "-i" BLOOD-MODULE-FILE-PATTERN--FD (expand-file-name base source))
-         )
-        (t (error "No usable fd found"))
-        )
-  )
-
 
 (provide 'blood-sync)
 ;;; blood-sync.el ends here

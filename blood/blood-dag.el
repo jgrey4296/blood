@@ -71,10 +71,13 @@ topo sort the graph.
   )
 
 (defun blood-dag--build ()
-  "build the dag by iterating over straight's metadata info"
+  "Build the dag by iterating over straight's metadata info"
   (let ((repos (append straight-recipe-repositories))
+        (keys (hash-table-keys straight--build-cache))
         )
-    (dolist (package (hash-table-keys straight--build-cache)) ;; for each package in straight's cache
+    (ilog! "Known Packages: %s" keys)
+    (dolist (package keys) ;; for each package in straight's cache
+      (log! :debug "Handling: %s" package)
       (let* ((package-sym (intern package))
              (deps (mapcar #'intern (nth 1 (gethash package straight--build-cache))))
 
@@ -83,6 +86,7 @@ topo sort the graph.
              (afters (ensure-list (apply #'append (mapcar #'(lambda (x) (blood--packages-s-after x)) components))))
              (full-deps (append deps afters))
             )
+        (log! :debug "Deps: %s" deps)
         (cond ((seq-contains-p repos package-sym) nil) ;; skip unknowns
               ((and (eq 1 (length full-deps)) (eq (car full-deps) 'emacs)) ;; root packages
                (puthash package-sym blood-dag--root blood-dag--graph)

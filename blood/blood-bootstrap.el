@@ -54,8 +54,8 @@ will always run blood--bootstrap-git-check-h and blood--bootstrap-core-paths-h "
 
 (defun blood--bootstrap-core-paths-h ()
   "Make the core paths needed for running blood"
-  (ghlog! "Bootstrapping Paths")
-  (let ((cache-dir (expand-file-name  blood-cache-dir)))
+  (ghlog! "Bootstrapping Profile-agnostic Paths")
+  (let ((cache-dir  blood-cache-dir))
     (if (file-exists-p cache-dir)
         (ilog! "Cache Exists: %s" cache-dir)
       (ilog! "Making cache Directory: %s" cache-dir)
@@ -66,8 +66,15 @@ will always run blood--bootstrap-git-check-h and blood--bootstrap-core-paths-h "
 
 (defun blood--bootstrap-env-h ()
   (ghlog! "Bootstrapping Env")
-  (warn "TODO: bootstrap blood env")
+  (ilog! "TODO: bootstrap blood env")
   (glogx!)
+  )
+
+(defun blood--bootstrap-keybindings-h ()
+  (ilog! "TODO: bootstrap keybindings")
+  (keymap-set messages-buffer-mode-map "j" #'next-line)
+  (keymap-set messages-buffer-mode-map "k" #'previous-line)
+
   )
 
 (provide 'blood-bootstrap)

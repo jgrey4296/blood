@@ -29,7 +29,7 @@
 (defconst blood--hook-laziness '(;; Not Lazy
                                  :cold-start   -99
                                  :bootstrap    -95
-                                 :clean        -90
+                                 :clean        -90 ;; TODO : move clean/sync/build/run to after user-max
                                  :sync         -85
                                  :build        -80
                                  :run          -70
@@ -57,7 +57,7 @@ use `bloody-lazy!' to convert the values
 
 (defvar blood--trace-memory nil)
 
-(defvar blood-module-locations (list (expand-file-name "modules" blood-config-dir)))
+(defvar blood-module-locations (list (expand-file-name "modules" blood-config-dir)) "Where modules are searched for")
 
 (defvar blood-path-to-id-fn #'blood-build-id-from-path "(lambda (package-name path)) -> identifier")
 
@@ -65,15 +65,11 @@ use `bloody-lazy!' to convert the values
 ;;-- end vars
 
 ;;-- hooks
+
 (defvar blood-bootstrap-hook nil "The hook to place functions for bootstrapping on")
-(defvar blood-clean-hook nil "The hook to place functions for cleaning on")
+
+(defvar blood-clean-hook nil "The hook for user to place functions for cleaning on")
 
 ;;-- end hooks
-
-;;-- customs
-
-(defcustom blood-cache-dir (expand-file-name (or (getenv BLOOD-CACHE-ENV-VAR) "~/.cache/blood")) "the directory to use as the emacs/straight cache head")
-
-;;-- end customs
 
 (provide 'blood-defs)

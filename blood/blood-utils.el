@@ -72,12 +72,16 @@
   (glogxs!)
   )
 
-(defun blood--find-with-fd (base source &optional pattern type)
+(defun blood--find-with-fd (base source &optional pattern type depth) ;; -> list
+  "Find directories to add to the loadpath"
   (ilog! "Searching: %s" (expand-file-name base source))
   (cond ((not (file-directory-p (expand-file-name base source)))
-         (ilog! "Search location does not exist: %s" (expand-file-name base source)))
-         ((executable-find "fdfind")
+         (ilog! "Search location does not exist: %s" (expand-file-name base source))
+         nil
+         )
+        ((executable-find "fdfind")
          (split-string (cdr (blood--ecall "fdfind"
+                                          "-d" (format "%s" (or depth 4))
                                           "-t" (or type "f")
                                           (or pattern ".")
                                           (expand-file-name base source)))
@@ -85,12 +89,14 @@
          )
         ((executable-find "fd")
          (split-string (cdr (blood--ecall "fd"
+                                          "-d" (format "%s" (or depth 4))
                                           "-t" (or type "f")
                                           (or pattern ".") (expand-file-name base source)))
                        "\n" t " +")
          )
         ((executable-find "find")
          (split-string (cdr (blood-ecall "find"
+                                         "-maxdepth" (format "%s" (or depth 4))
                                          "-t" (or type "f")
                                          (expand-file-name base source)
                                          "-regex" (or pattern ".")))
@@ -160,7 +166,7 @@ but can also have a read lambda, a header for the cache file,
 and an incremental flag"
   (unless (keywordp kw) (error "Blood Cache Registration Uses Keywords"))
   (unless save-lambda (error "Caches need a save lambda"))
-  (ilog! "Registering Cache: %s" kw)
+  (log! :debug "Registering Cache: %s" kw)
   (puthash kw (list :save save-lambda :read read-lambda :header header :incremental incremental) blood--caches)
   )
 
@@ -175,7 +181,7 @@ Pass a third argument to add to the cache instead of completely re-write
     (let ((header (plist-get (gethash kw blood--caches) :header))
           (writer (plist-get (gethash kw blood--caches) :save))
           )
-      (ilog! "Caching: %s" (blood-cache! kw))
+      (log! :debug "Caching: %s" (blood-cache! kw))
       (with-temp-buffer
         (when (and (not incremental) header)
           (mapc #'(lambda (x) (insert "## " x "\n")) (split-string header "\n" t " +")))
@@ -191,8 +197,8 @@ Pass a third argument to add to the cache instead of completely re-write
 (defun blood-read-cache! (kw)
   "Read a cache"
   (if (not (file-exists-p (blood-cache! kw)))
-      (ilog! "Can't read cache, it does not exist: %s : %s" kw (blood-cache! kw))
-    (ilog! "Reading Cached Data: %s" (blood-cache! kw))
+      (log! :warn "Can't read cache, it does not exist: %s : %s" kw (blood-cache! kw))
+    (log! :debug "Reading Cached Data: %s" (blood-cache! kw))
     (with-temp-buffer
       (insert-file-contents-literally (blood-cache! kw))
       (when (plist-get (gethash kw blood--caches) :header)

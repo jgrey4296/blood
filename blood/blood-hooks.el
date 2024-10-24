@@ -24,8 +24,8 @@
 ;;;; Installed on after-init-hook:
 
 (defun blood--setup-default-h ()
-  "set core settings"
-  (ghlog! "Setting up core Blood customisations")
+  "Set Core Settings for blood"
+  (hlog! "Setting up core defaults")
   (set-language-environment "UTF-8")
   ;; General Startup Settings
   (setq default-input-method nil
@@ -66,18 +66,61 @@
     (add-hook 'window-setup-hook          #'doom-restore-menu-bar-in-gui-frames-h)
     (add-hook 'after-make-frame-functions #'doom-restore-menu-bar-in-gui-frames-h)
     )
-  ;; todo - setup load timing
-  ;; todo - set auth-sources , encrypted
-  ;; todo - handle customized variables
+  (ilog! "TODO - setup load timing")
+  (ilog! "TODO - set auth-sources , encrypted")
+  (ilog! "TODO - handle customized variables")
   ;; todo - on mac regrab focus: (when (display-graphic-p (selected-frame)) (set-frame-parameter frame 'menu-bar-lines 1))
   (glogx!)
   )
 
 (defun blood-menu-bar-fix-h (&optional frame)
   "adapted from doom-restore-menu-bar-in-gui-frames-h"
+  (ilog! "Handling menu bar")
   (when-let (frame (or frame (selected-frame)))
     (when (display-graphic-p frame)
       (set-frame-parameter frame 'menu-bar-lines 1)))
+  )
+
+(defun blood--report-after-init-h ()
+  "A hook fn to report key values and registered after-init-hook fn's that are going to be run"
+  (hlog! "Init Loaded, Processing...")
+  (ilog! "Active Profile: %s" blood-profile--default)
+  (ghlog! "Current Variable Assignments:")
+  (dolist (loc '(native-comp-eln-load-path data-directory doc-directory exec-directory
+	         installation-directory invocation-directory invocation-name source-directory
+                 shared-game-score-directory noninteractive blood--cmd
+                 blood-profile--build-dir blood-profile--installation-dir
+
+                 ))
+    (ilog! "%-30s : %s" (symbol-name loc) (symbol-value loc))
+    )
+  (glogx!)
+  (ghlog! "Hooks to Run: ")
+  (dolist (hook after-init-hook)
+    (when (symbolp hook) (ilog! "-- : %s" (symbol-name hook))))
+  (glogx!)
+  )
+
+(defun blood--final-report-h ()
+  "Hook fn to provide some final information at the end of running after-init-hook,
+and switch to the *Messages* buffer
+"
+  (hlog! "BLOOD")
+  (ilog! "Profile: %s" blood-profile--default)
+  (ilog! "Command: %s" blood--cmd)
+  (ilog! "Remaining CLI Args:  %s"  command-line-args)
+  (ilog! "Initial Buffer Choice: %s" initial-buffer-choice)
+  (hlog! "BLOOD")
+  (switch-to-buffer "*Messages*")
+  )
+
+(defun blood--write-messages-to-log-file-h ()
+  "Runs at the end of post-init-hook to write startup messages to blood-cache-dir"
+  (ilog! "Writing messages to blood log")
+  (with-temp-buffer
+    (insert-buffer "*Messages*")
+    (write-file (file-name-concat blood-cache-dir "startup.log"))
+    )
   )
 
 (provide 'blood-hooks)

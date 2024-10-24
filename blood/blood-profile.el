@@ -105,8 +105,12 @@ sets paths for profile,
 
 (defun blood-auto-saves-h ()
   "set the location of the auto-save-dir using the current profile"
-  (setq auto-save-dir (expand-file-name (file-name-concat (blood--profile-s-name (blood-profile-current)) "auto-saves") blood-cache-dir)
-        auto-save-list-file-prefix (file-name-concat auto-save-dir "save-"))
+  (ilog! "Setting Auto Save location to profile: %s" (blood--profile-s-name (blood-profile-current)))
+  (setq auto-save-dir (expand-file-name (file-name-concat
+                                         (symbol-name (blood--profile-s-name (blood-profile-current)))
+                                         "auto-save") blood-cache-dir)
+        auto-save-list-file-prefix (file-name-concat auto-save-dir "save-")
+        )
   )
 
 (add-hook 'blood-profile--post-activate-hook #'blood-user-files-h)
