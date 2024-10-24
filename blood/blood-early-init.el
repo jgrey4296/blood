@@ -6,14 +6,15 @@
 ;; See footer for licenses/metadata/notes as applicable
 ;;-- end Header
 
+(require 'emacs "29.1")
 (require 'cl-lib)
-(require 'blood-defs)
+(require 'subr-x)
 (require 'blood-log)
-(require 'blood-utils)
-(require 'blood-deferral)
 
-(ilog! "Early Init: %s" (getenv "TERM"))
+(hlog! "Early Init: %s" (getenv "TERM"))
 (ilog! "CLI args: %s" command-line-args)
+
+(require 'blood-defs)
 
 ;;-- arg processing
 ;; Doing this early, so a set profile or command is usable in the init file.
@@ -136,18 +137,11 @@
 (require 'blood-core)
 (require 'blood-hooks)
 (require 'blood-profile)
-
+(require 'blood-cmds)
+(glogx!)
 ;;-- end core package requires
 
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-(cl-assert (featurep 'blood-utils))
-(cl-assert (featurep 'blood-deferral))
-(cl-assert (featurep 'blood-core))
-(cl-assert (featurep 'blood-hooks))
-(cl-assert (featurep 'blood-profile))
-(cl-assert (featurep 'blood-bootstrap))
-(cl-assert (featurep 'blood-cmds))
+(loaded? blood-defs blood-log blood-utils blood-deferral blood-core blood-hooks blood-profile blood-bootstrap blood-cmds)
 
 (provide 'blood-early-init)
 

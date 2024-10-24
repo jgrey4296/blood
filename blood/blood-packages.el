@@ -5,17 +5,14 @@
 ;;
 ;; See footer for licenses/metadata/notes as applicable
 ;;-- end Header
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-(cl-assert (featurep 'blood-utils))
-(cl-assert (featurep 'blood-structs))
-(cl-assert (featurep 'blood-deferral))
-(llog! "Pacakges lib")
+(loaded? blood-defs blood-log blood-utils blood-structs blood-deferral)
+(llog! "Packages lib")
 
 (defun blood-packages--init (package-spec)
   "The standard way of loading a package spec"
+  (cl-assert (blood--package-s-p package-spec))
   (let ((package-sym (blood--identifier-s-package (blood--package-s-id package-spec))))
-    (ghlog! "Initialising: %s" package-sym)
+    (ghlog! "Initialising Package: %s" package-sym)
     (funcall (blood--package-s-on-init package-spec))
     (blood-packages--load-autoloads package-spec)
     (blood-packages--set-advice package-spec)

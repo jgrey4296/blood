@@ -20,11 +20,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(require 'subr-x)
-
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-
+(loaded? blood-defs blood-log subr-x)
 (llog! "Utils")
 
 ;;-- external calls

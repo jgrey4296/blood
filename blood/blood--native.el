@@ -20,9 +20,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-(cl-assert (featurep 'blood-utils))
+(loaded? blood-defs blood-log blood-utils blood-structs)
 (llog! "Native")
 
 ;; TODO: maybe cache some of this?

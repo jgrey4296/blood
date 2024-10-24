@@ -1,13 +1,12 @@
 ;;; blood-cmds.el -*- lexical-binding: t; no-byte-compile: t; -*-
 ;;-- Header
 ;; File Commentary:
-;;
+;; cmds are run at the :cold-start location of `after-init-hook',
 ;;
 ;; See footer for licenses/metadata/notes as applicable
 ;;-- end Header
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-(cl-assert (featurep 'blood-utils))
+(loaded? blood-defs blood-log blood-utils)
+(llog! "Blood Cmds")
 
 (defun blood--cmd-sync ()
   " Cmd for triggering a sync of packages, using the chosen backend "

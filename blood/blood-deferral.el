@@ -1,6 +1,5 @@
 ;;; macros.el -*- lexical-binding: t; -*-
 ;; A Simple load queue
-(require 'blood-log)
 (llog! "Deferrals")
 
 (defvar blood-defer--load-queue nil)
@@ -133,6 +132,11 @@ TODO advice load instead
 
      blood-defer--load-queue
      )
+  )
+
+(defmacro loaded? (&rest features)
+  "Assert that all features have been loaded"
+  `(mapc #'(lambda (f) (cl-assert (featurep f) t (format "Not Loaded: %s : %s" f (file!)))) (quote ,features))
   )
 
 (provide 'blood-deferral)

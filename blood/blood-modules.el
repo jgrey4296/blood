@@ -20,19 +20,16 @@
 ;;
 ;;; Code:
 ;;-- end header
+(loaded? blood-structs)
 (llog! "Modules lib")
 (require 'blood-sync)
 (require 'blood-trace)
-(require 'blood-dag)
-(require 'blood-structs)
-(require 'blood-deferral)
-(require 'blood-packages)
 
 (defconst BLOOD-MODULE-FILE-PATTERN--FD ".*(m-.+|module|module-.+).el$"  "blood will search and load all files named this in module directories, to get package specs")
 
-(defvar blood-modules--declared-components-ht (make-hash-table) "Maps group:module:package to package spec. sym -> list[component]. `use!` adds to this.")
+(defvar blood-modules--declared-components-ht (make-hash-table) "Maps group:module:package to package spec. sym -> component. `use!` adds to this.")
 
-(defvar blood-modules--package-component-map-ht (make-hash-table) "Maps packages to all modules they are part of")
+(defvar blood-modules--package-component-map-ht (make-hash-table) "Maps packages to all modules they are part of. sym -> list[sym]")
 
 (defun blood-modules--sym-from-parts (group mod &optional package)
   "Build a symbol from a group, a module name, and maybe a package to uniquely

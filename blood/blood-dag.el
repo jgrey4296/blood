@@ -20,10 +20,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-(cl-assert (featurep 'blood-utils))
-(cl-assert (featurep 'blood-modules))
+(loaded? blood-defs blood-log blood-utils)
 (llog! "Dag")
 
 (defconst blood-dag--root '__blood_root)

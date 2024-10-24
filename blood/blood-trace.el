@@ -1,5 +1,6 @@
 ;; blood-trace.el -*- mode: elisp; lexical-binding: t; -*-
-  (require 'memory-report)
+(require 'memory-report)
+(llog! "Blood Trace")
 
 ;; Blood Memory growth tracing
 ;; overall obj memory usage:

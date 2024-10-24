@@ -1,3 +1,6 @@
+;; blood-log.el -*- mode: emacs-lisp; lexical-binding: t; -*-
+
+(require 'seq)
 (require 'subr-x)
 
 (defvar blood--log-group-level 2)

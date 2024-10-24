@@ -20,9 +20,7 @@
 ;;
 ;;; Code:
 ;;-- end header
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-(cl-assert (featurep 'blood-utils))
+(loaded? blood-defs blood-log blood-utils)
 (llog! "Clean")
 
 (defvar blood--clean-queue nil "a list of profile names to clean, or t if all")
@@ -33,7 +31,6 @@
 (defun blood--clean-h ()
   "clean the current profile (or if arg, all profiles) build directory
 type, as a symbol, can be: 'elc 'eln ...?
-
 "
   (hlog! "Cleaning")
   (run-hooks 'blood-clean-hook)

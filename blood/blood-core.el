@@ -1,11 +1,6 @@
 ;;; blood-core.el -*- lexical-binding: t; -*-
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-(cl-assert (featurep 'blood-utils))
-(cl-assert (featurep 'blood-deferral))
+(loaded? blood-defs blood-log blood-utils blood-deferral blood-modules blood-structs)
 (llog! "Core")
-(require 'blood-bootstrap)
-(require 'blood-cmds)
 
 ;;-- profile
 
