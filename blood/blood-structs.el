@@ -1,26 +1,27 @@
 ;;; blood-structs.el -*- lexical-binding: t; no-byte-compile: t; -*-
 ;;-- Header
 ;; File Commentary:
-;;
-;;
+;; Structs used in blood, in the form: blood--%s-s
+;; Constructed using:                  blood-build-%s
 ;; See footer for licenses/metadata/notes as applicable
 ;;-- end Header
-(require 'cl-lib)
+(loaded? cl-lib)
+(llog! "Structs")
 
 (cl-defstruct blood--profile-s
-  " The structure of a blood profile"
-  (id nil :type blood--identifier-s :doc "the name of the profile")
+  "The structure of a blood profile"
+  (id               nil :type blood--identifier-s    :doc "the name of the profile")
   (default          nil :type bool                   :doc "is this profile the default?")
   (disabled         nil :type bool                   :doc "is the profile disabled?")
-  (backend          nil :type symbol :doc "The backend for package management to use")
-  (bootstrap        nil :type list                   :doc "functions for the bootstrap stage")
+  (backend          nil :type symbol                 :doc "The backend for package management to use")
+  (bootstrap        nil :type list:fn                :doc "functions for the bootstrap stage")
   (modules          nil :type list:blood--module-dec :doc "the modules this profile activates")
   (constraints      nil :type list                   :doc "constraints the profile places on modules")
   (paths            nil :type blood--paths           :doc "the paths this profile uses")
   (recipes          nil :type list:blood--recipe     :doc "straight recipe declarations")
   (block-compile-of nil :type list                   :doc "packages and files that are not to be compiled")
-  (on-init          nil :type lambda                 :doc "an init hook, when the profile activates, before packages are loaded")
-  (on-ready         nil :type lambda                 :doc "config hook, after packages been loaded and configured")
+  (init             nil :type lambda                 :doc "an init hook, when the profile activates, before packages are loaded")
+  (config           nil :type lambda                 :doc "config hook, after packages been loaded and configured")
 
   )
 
@@ -94,59 +95,46 @@
   (source (file!)   :type str)
   )
 
-(cl-defstruct blood--backend-s
-  "The interface functions of a package management backend"
-  (name      nil      :type symbol :doc "the name ofthe backend")
-  (requires  nil      :type list:symbol :doc "a list of package symbols this backend will require")
-  (bootstrap nil      :type list:lambda :doc "a list of (lamdba (profile)) -> nil, functions to configure the backend")
-  (activator nil      :type lambda :doc "(lambda (profile)) -> nil, activates the backend")
-  (sync      nil      :type lambda :doc "(lambda (packages)) -> nil, for the backend to install given packages")
-  (clean     nil      :type lambda :doc "(lambda ()) -> nil, a hook for cleaning")
-  ;; TODO add a 'package load wrapper'. eg: for straight--load-package-autoloads
-  )
-
 (cl-defstruct blood--advice-s
-  "declarative advice struct"
-  (targets nil :type list:symbol :doc "functions to advise")
-  (where   nil :type symbol      :doc "where the advice goes")
-  (funcs   nil :type list:symbol :doc "the advice function symbols")
+  "declarative collection of advice"
+  (targets nil :type "list[symbol]" :doc "functions to advise")
+  (advisors nil :type "list[(where fn)]" :doc "list of advisors. eg: '((:around #'blah) (:override #'bloo))")
   )
 
 ;; Construction utils:
-;; TODO move these into ctors
+;; TODO move these into ctors ?
 
-(defun blood-build-profile (name disabled default args)
-  " Macro-processor for blood! profile definition"
+(defun blood-build-profile (name disabled default args) ;; ->  blood--profile-s
+  "Macro-processor for blood! profile definition"
   (let ((id (make-blood--identifier-s :profile name))
-        (paths (blood-build-pths (plit-get args :paths)))
-        (backend (cond ((listp (plist-get args :backend))
-                        (apply #'make-blood--backend-s (plist-get args :backend)))
-                       (t (plist-get args :backend))))
+        (paths (blood-build-paths (plist-get args :paths)))
+        (backend (plist-get args :backend))
         (modules (blood-build-modules (plist-get args :active-modules:)))
         )
         (make-blood--profile-s :id id
-                               :disabled disabled
                                :default default
-                               :paths paths
+                               :disabled disabled
                                :backend backend
                                :bootstrap (ensure-list (plist-get args :bootstrap))
                                :modules modules
                                :constraints (blood-build-constraints (plist-get args :constraints))
+                               :paths paths
                                :recipes (mapcar #'blood-build-recipe (plist-get args :recipes))
                                :block-compile-of (ensure-list (plist-get args :no-compile))
-                               :post-activation nil
+                               :init   nil ;; TODO make the lambda
+                               :config nil ;; TODO make the lambda
                                )
     )
   )
 
-(defun blood-build-modules (modules)
-  " process profile syntax into module declarations"
+(defun blood-build-modules (modules) ;; -> list[blood--module-s]
+  "Process profile syntax into module declarations"
   (let (results group module)
     (while modules
-      (cond ((lisp (car modules))
+      (cond ((listp (car modules))
              (let ((data (pop modules)))
-               (push (make-blood--module-s (make-blood--identifier-s :group (car data)
-                                                                     :module (cadr data))
+               (push (make-blood--module-s :id (make-blood--identifier-s :group (car data)
+                                                                         :module (cadr data))
                                            :allow (plist-get data :allow)
                                            :disallow (plist-get data :disallow))
                      results)))

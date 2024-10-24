@@ -1,51 +1,44 @@
 ;;; bootstrap.el -*- lexical-binding: t; -*-
-(cl-assert (featurep 'blood-defs))
-(cl-assert (featurep 'blood-log))
-(cl-assert (featurep 'blood-utils))
-(cl-assert (featurep 'blood-structs))
+(loaded? blood-defs blood-log blood-utils blood-structs blood-backend)
 (llog! "Bootstrap")
-
 
 (defvar blood--bootstrap-queue nil "A queue of profile specs to bootstrap")
 
 (defcustom blood-additional-bootstrappers nil "functions to run as part of the bootstrap process" :type 'list)
 
-(defcustom blood--backend-default nil
-  "The plist describing the default backend to use. comprised of :name, :require, :bootstrap and :actviator ")
-
 (defun blood-bootstrap-h ()
-  "For each declared profile in the quue, bootstrap it, using blood--bootstrap-defaults
-if the profile doesn't provide its own bootstrappers.
+  "For each declared profile in the queue, bootstrap it.
 will always run blood--bootstrap-git-check-h and blood--bootstrap-core-paths-h "
   (hlog! "Bootstrapping")
-  (when BLOOD-BOOTSTRAPPED
-    (error "Trying to bootstrap blood when it's already been bootstrapped"))
-  (unless blood--backend-default
-    (require 'blood--straight)
-    (setq blood--backend-default blood--bootstrap-straight-backend-default)
-    )
+  (when BLOOD-BOOTSTRAPPED (error "Trying to bootstrap blood when it's already been bootstrapped"))
   (add-hook 'blood-bootstrap-hook #'blood--bootstrap-env-h -90)
   (add-hook 'blood-bootstrap-hook #'blood--bootstrap-core-paths-h -89)
-  (add-hook 'blood-bootstrap-hook #'blood--bootstrap-git-check-h - 88)
-
+  (add-hook 'blood-bootstrap-hook #'blood--bootstrap-git-check-h  -88)
+  (add-hook 'blood-bootstrap-hook #'blood--backend-activate-h -87)
+  (add-hook 'blood-bootstrap-hook #'blood--bootstrap-keybindings-h)
+  ;; TODO bootstrap a backend
   (run-hooks 'blood-bootstrap-hook)
+
   (if (not blood--bootstrap-queue)
-      (ilog! "Nothing More to bootstrap")
+      (ilog! "No Profiles Queued to bootstrap")
     (dolist (spec blood--bootstrap-queue)
-      (ilog! "Bootstrapping Profile: %s" (blood--profile-s-name spec))
-      (dolist (fn (or (blood--profile-s-bootstrap spec) (blood--backend-s-bootstrap blood--backend-default)))
+      (ghlog! "Bootstrapping Profile: %s" (blood--profile-s-name spec))
+      (dolist (fn (blood--profile-s-bootstrap spec))
         (ilog! "Calling: %s" fn)
         (funcall fn spec)
         )
+      (glogx!)
       )
     )
+  (glogxs!)
   (setq BLOOD-BOOTSTRAPPED t)
   )
 
 (defun blood--bootstrap-git-check-h ()
   "bootstrap or complain about git"
   (ghlog! "Checking for Git")
-  (unless (executable-find "git")
+  (if (executable-find "git")
+      (ilog! "Found Git")
     (user-error "Git isn't present on your system. Cannot proceed."))
   (let* ((version (cdr (blood--call "git" "version")))
          (version

@@ -5,21 +5,20 @@
 ;;
 ;; See footer for licenses/metadata/notes as applicable
 ;;-- end Header
-(require 'blood-structs)
+(loaded? blood-structs)
+(llog! "Blood Backend: Elpaca")
 
 ;; https://github.com/progfolio/elpaca/blob/master/doc/manual.md
-(defconst blood--bootstrap-straight-backend-default (blood--backend-s :name 'elpaca
-                                                                      :require 'elpaca
+(defconst blood--bootstrap-elpaca-backend-default (blood-build-backend 'elpaca
+                                                                      :requires 'elpaca
                                                                       :bootstrap nil
                                                                       :activator nil
                                                                       :sync nil
                                                                       :clean nil
                                                                       )
+  )
 
-
-
-
-(provide 'blood--elpaca)
+(provide 'blood--backend-elpaca)
 
 ;;-- Footer
 ;; Copyright (C) 2024 john

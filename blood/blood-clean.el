@@ -48,12 +48,14 @@ type, as a symbol, can be: 'elc 'eln ...?
 
 (defun blood--clean--backend-h ()
   "Clean a backend's files"
-  (cond ((and blood--backend-default (functionp (blood--backend-s-clean blood--backend-default)))
+  (ghlog! "Running Backend Clean")
+  (cond ((and blood--backend-active (functionp (blood--backend-s-clean blood--backend-default)))
          (funcall (blood--backend-s-clean blood--backend-default))
          )
         (t
          (warn "No Clean function for current backend", blood--backend-default))
         )
+  (glogx!)
   )
 
 (defun blood--clean--package-src-h ()

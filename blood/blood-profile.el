@@ -42,41 +42,52 @@
   "Start the cli specified / default profile
 Clears the profile stack,
 sets paths for profile,
-
 "
   (interactive)
   (when clear
     (ilog! "Clearing Profile Stack")
     (setq blood-profile-active-specs nil
-          native-comp-eln-load-path (expand-file-name blood--eln-cache-name blood-cache-dir)
+          native-comp-eln-load-path (ensure-list (expand-file-name blood--eln-cache-name blood-cache-dir))
           load-path blood--original-load-path
           )
     (run-hooks 'blood-profile--clear-hook)
     )
-  (unless (or profile blood-profile--default)
-    (error "No Profile Provided, no default profile set"))
+  (unless (or profile blood-profile--default) (error "No Profile Provided, no default profile set"))
 
   (let* ((profile (or profile blood-profile--default))
-         (spec (if (stringp profile) (gethash (intern profile) blood-profile--declared-ht) profile))
-         (backend (or (blood--profile-s-backend spec) blood--backend-default))
+         (spec (cond ((stringp profile) (gethash (intern profile) blood-profile--declared-ht))
+                     ((symbolp profile) (gethash profile blood-profile--declared-ht))
+                     (t profile)
+                     ))
+         (backend-sym (cond ((blood--profile-s-p spec)
+                             (or (blood--profile-s-backend spec) blood--backend-default))
+                            (t blood--backend-default)
+                            ))
          )
-    (unless spec (error "No Matching Spec: %s" profile))
-    (unless quiet (ghlog! "Activating Profile Spec: %s" (blood--profile-s-name spec)))
+    (blood--set-backend backend-sym)
+    (unless quiet (hlog! "Activating Profile Spec: %s" (blood--profile-s-name spec)))
     (push spec blood-profile-active-specs)
-    (funcall (blood--backend-s-activator backend) spec)
+    (ghlog! "Bootstapping Backend")
+    (funcall (blood--backend-s-bootstrap blood--backend-active) spec)
+    (glogx!)
+    (ghlog! "Initialising Backend")
+    (funcall (blood--backend-s-activator blood--backend-active) spec)
+    (glogx!)
     (run-hooks 'blood-profile--post-activate-hook)
     (unless quiet (glogx!))
     )
   )
 
 (defun blood-profile--register (spec)
-  ""
+  "Register a new profile"
   (let ((profile-name (blood--profile-s-name spec))
         )
     ;; Handle non-interactive startup variations:
-    (when (gethash profile-name blood-profile--declared-ht)
-      (warn "Duplicated profile name, as the profile spec list is an alist, only the last profile of this name will be usable" 'profile profile-name))
-    (ilog! "Registering profile: %s" profile-name)
+    (when-let ((profile (gethash profile-name blood-profile--declared-ht)))
+      (log! :warn "Duplicated profile name '%s', overriding" profile-name)
+      (log! :warn "Existing profile: %s" profile)
+      )
+    (ilog! "+ Profile: %s" profile-name)
     (puthash profile-name spec blood-profile--declared-ht)
     )
   )

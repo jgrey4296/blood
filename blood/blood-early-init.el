@@ -124,6 +124,15 @@
 (glogx!)
 
 ;;-- core package requires
+(glog! "Loading Core Packages")
+(require 'blood-deferral)
+(require 'blood-structs)
+(require 'blood-utils)
+(require 'blood-backend)
+(require 'blood-bootstrap)
+
+(require 'blood-packages)
+(require 'blood-modules)
 (require 'blood-core)
 (require 'blood-hooks)
 (require 'blood-profile)

@@ -53,9 +53,9 @@ topo sort the graph.
 
 "
   (ghlog! "Building Dag")
-  (unless (and (boundp'blood--straight-initialised)
-               blood--straight-initialised)
+  (unless (and blood--backend-active (eq (blood--backend-s-name blood--backend-active) 'straight))
     (error "Can't build Packages DAG without straight"))
+  (ilog! "Build Cache: %s" (straight--build-cache-file))
   (straight--load-build-cache) ;; -- turn this into a hook?
   (blood-dag--build)
   (ghlog! "Package Dependencies Mapping: ")
