@@ -20,6 +20,8 @@ reminder: use subu in bash for testing profile
 
 ** [∅] make struct constructors return identifiers on failure
 
+** [∅] add a 'disable' declaration option
+
 * blood :blood:
 :PROPERTIES:
 :ID:       a9c88b0c-54c5-48f4-9a4b-0a60cf9f8102
