@@ -33,35 +33,30 @@ Has Three main modes of running:
 "
   (declare (indent 2))
 
-  (let* ((profile-name (plist-get args :profile))
+  (let* ((profile-name `(quote ,(plist-get args :profile)))
          (disabled     (plist-get args :disabled))
          (default      (plist-get args :default))
-         (is-interactive (not noninteractive))
+         (spec-builder `(blood-build-profile ,profile-name ,disabled ,default ',args))
          )
 
-    (cond ((eq blood--cmd 'sync) ;; Option 0: non-interactive install packages
-           `(let ((spec (blood-build-profile ,profile-name
-                                             ,disabled
-                                             ,default
-                                             ,args)))
+    (cond (disabled ;; don't do anything if the profile is disabled
+           `(ilog! "- Profile: %s (disabled)" ,profile-name)
+           )
+          ((eq blood--cmd 'sync) ;; install packages
+           `(let ((spec ,spec-builder))
               (blood-profile--register spec)
-              (blood--cmd-sync)
               ))
           ((eq blood--cmd 'clean)
-           `(let ((spec (blood-build-profile ,profile-name ,default ,disabled ,args)))
+           `(let ((spec ,spec-builder))
               (blood-profile--register spec)
               (push spec blood--clean-queue)
-              (blood--cmd-clean)
               ))
           ((eq blood--cmd 'report)
-           `(let ((spec (blood-build-profile ,profile-name ,default ,disabled ,args)))
+           `(let ((spec ,spec-builder))
               (blood-profile--register spec)
-              (blood--cmd-report)
               ))
-          ((eq blood--cmd 'stub)
-           (blood--cmd-stub))
-          (is-interactive
-           `(let ((spec (blood-build-profile ,profile-name ,default ,disabled ,args)))
+          ((not noninteractive)
+           `(let ((spec ,spec-builder))
               (blood-profile--register spec)
               (push spec blood--bootstrap-queue)
               (if (and ,default (null blood-profile--default))
@@ -87,34 +82,37 @@ Has Three main modes of running:
   (let* ((debug-sym (gensym))
          (spec-sym (gensym))
          (source-sym (gensym))
+         (uniq-sym (gensym))
+         (module-sym (gensym))
          (source (file!))
          )
 
     `(let* ((,source-sym ,source)
-            (,spec-sym (make-blood--package-s ,name ,args))
-            )
-       (cond ((eq (blood--package-s-compile ,spec-sym) 'bad-value)
-              (warn "Bad Compile Value Provided in Package Spec" ,package-name ,source-sym ,spec-sym)
-              (push ,spec-sym blood--package-declaration-failures))
-             ((blood--identifier-s-p ,spec-sym))
-              (warn "Bad Package Spec declared. Source: %s" ,(blood--identifier-s-source spec-sym))
-              (push ,spec-sym blood--package-declaration-failures))
-             ((eval (blood--package-s-disabled ,spec-sym))
-              (ilog! "Package Disabled: %s (%s)" ',(blood-uniq-id spec-sym) ,(blood--identifier-s-source (blood--package-s-id spec-sym))
-             (t
+               (,spec-sym (blood-build-package ,package-name ,source (quote ,args)))
+               (,uniq-sym (blood-uniq-id ,spec-sym))
+               (,module-sym (blood--id-sym ,spec-sym :profile nil :package nil :group t :module t))
+               )
+       (cond ((blood--package-s-disabled ,spec-sym)
+              (ilog! "- Package %s (disabled) (%s)" (blood-uniq-id ,spec-sym) (blood--identifier-s-source (blood--package-s-id ,spec-sym))))
+             ((gethash ,uniq-sym blood-modules--declared-components-ht)
+              (ilog! "- Package %s (duplicated) (%s)" ,uniq-sym  (blood--identifier-s-source (blood--package-s-id ,spec-sym))))
+             ((blood--package-s-p ,spec-sym)
+              (ilog! "+ Package %s (%s)" ,uniq-sym (blood--identifier-s-source (blood--package-s-id ,spec-sym)))
               ;; Register the component spec
-              (puthash  (blood-uniq-id ,spec-sym) ,spec-sym blood-modules--declared-components-ht)
-              ;; Register the package
-              (push (blood-uniq-id ,spec-sym)
-                    (gethash (blood--id-sym ,spec-sym :group t :module t) blood-modules--package-component-map-ht))
+              (puthash ,uniq-sym ,spec-sym blood-modules--declared-components-ht)
+              ;; Register the package under its group:module
+              (push ,uniq-sym (gethash ,module-sym blood-modules--package-component-map-ht))
               ,spec-sym
               )
+             (t
+              (ilog! "- Package Spec Failed. (%s)" ,package-name)
+              (push ,spec-sym blood--package-declaration-failures)
              )
        )
     )
     )
-
   )
+
 ;;-- end module-linked package
 
 ;;-- module-agnostic package

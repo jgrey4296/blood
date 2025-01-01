@@ -96,8 +96,12 @@ sets paths for profile,
 
 (defun blood-user-files-h ()
   "set the location of the user emacs directory from the current profile"
-  (setq user-emacs-directory (expand-file-name (file-name-concat "profiles" (blood--profile-s-name (blood-profile-current)) "user-files") blood-cache-dir))
-  (ilog! "User Emacs Directory Set to: %s" user-emacs-directory)
+  (ilog! "Setting User Emacs Directory to profile: %s" (blood--profile-s-name (blood-profile-current)))
+  (setq user-emacs-directory (expand-file-name (file-name-concat
+                                                "profiles"
+                                                (symbol-name (blood--profile-s-name (blood-profile-current)))
+                                                "user-files")
+                                               blood-cache-dir))
   (unless (file-exists-p user-emacs-directory)
     (make-directory user-emacs-directory t)
       )

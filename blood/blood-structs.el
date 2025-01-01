@@ -39,7 +39,6 @@
   (defer nil       :type bool)
   (debug nil       :type symbol :doc "trigger package specific debugging. nil|break|log")
   (recipe nil      :type symbol|blood--recipe)
-  (after nil       :type list:symbol :doc "packages that must be loaded first")
   (autoloads nil   :type list:function :doc "autoload triggers")
   (constraints nil :type blood--constraint :doc "constraints for this package's use")
   (on-init nil     :type lambda)
@@ -52,27 +51,28 @@
   )
 
 (cl-defstruct blood--constraint-s
-  " A Constraint definition, limiting modules and packages to certain environments
-
-  "
-  (profile         nil          :type symbol      :doc "the constraint requires this profile")
-  (package-version nil          :type str         :doc "contextually, the package must be this version")
-  (emacs-version   nil          :type str         :doc "emacs must have this version")
-  (module-version  nil          :type str         :doc "the module must be this version")
-  (os              nil          :type str         :doc "the OS must be this")
-  (system          nil          :type str         :doc "the system must have these cli programs")
-  (commit          nil          :type str         :doc "the package must be this commit")
-  (predicates      nil          :type list:lambda :doc "no-arg functions that must return non-nil to succeed")
-  (package-rejections nil       :type list:symbol :doc "packages that are disallowed")
+  " A Constraint definition, limiting modules/packages/profiles to certain environments "
+  (profile            nil          :type symbol      :doc "the constraint requires this profile")
+  (package-version    nil          :type str         :doc "contextually, the package must be this version")
+  (emacs-version      nil          :type str         :doc "emacs must have this version")
+  (module-version     nil          :type str         :doc "the module must be this version")
+  (os                 nil          :type str         :doc "the OS must be this")
+  (system             nil          :type str         :doc "the system must have these cli programs")
+  (commit             nil          :type str         :doc "the package must be this commit")
+  (predicates         nil          :type list:lambda :doc "no-arg functions that must return non-nil to succeed")
+  (conflicts          nil          :type list:symbol :doc "packages that disallow this package")
+  (after              nil          :type list:symbol :doc "packages that must be loaded first")
   )
 
 (cl-defstruct blood--paths-s
-  ""
+  "Describes the (relative) paths blood uses,
+apart from the init entry, which is the expanded path to the relevant init.el "
   (cache   nil :type str)
   (install nil :type str)
   (build   nil :type str)
   (modules nil :type list)
   (secrets nil :type list)
+  (init    nil :type str)
   )
 
 (cl-defstruct blood--recipe-s
@@ -145,8 +145,8 @@
             (t (error "Unknown value used in modules" modules))
             )
       (when (and group module)
-        (push (make-blood--module-s (make-blood--identifier-s :group group
-                                                              :module module))
+        (push (make-blood--module-s :id (make-blood--identifier-s :group group
+                                                                  :module module))
               results)
         (setq group nil
               module nil))
@@ -155,40 +155,42 @@
     )
   )
 
-(defun blood-build-package (name source args)
-  "used by the use! macro"
+(defun blood-build-package (name source args) ;; -> blood--package-s
+  "use! uses this to build package definitions"
   (let* ((id (funcall blood-path-to-id-fn name source))
          )
     (make-blood--package-s
      :id id
-     :disabled (plist-get args :disabled)
-     :recipe (blood-build-recipe (plist-get args :recipe))
-     :after (ensure-list (plist-get args :after))
-     :autoloads (ensure-list (plist-get args :autoloads))
-     :constraints (blood-build-constraints (plist-get args :constraints))
-     :on-init `(lambda () ,@(plist-get args :on-init))
-     :on-load `(lambda () ,@(plist-get args :on-load))
-     :on-ready `(lambda () ,@(plist-get args :on-ready))
-     :advice (blood-build-advice (plist-get args :advice))
-     :hooks (ensure-list (plist-get args :hooks))
-     :bind (ensure-list (plist-get args :bind))
+     :disabled          (plist-get args :disabled)
+     :recipe            (blood-build-recipe (plist-get args :recipe))
+     :autoloads         (ensure-list (plist-get args :autoloads))
+     :constraints       (blood-build-constraints (plist-get args :constraints))
+     :on-init          `(lambda () ,@(plist-get args :on-init))
+     :on-load          `(lambda () ,@(plist-get args :on-load))
+     :on-ready         `(lambda () ,@(plist-get args :on-ready))
+     :advice            (blood-build-advice (plist-get args :advice))
+     :hooks             (ensure-list (plist-get args :hooks))
+     :bind              (ensure-list (plist-get args :bind))
      )
     )
   )
 
-(defun blood-build-recipe (args)
+(defun blood-build-recipe (args) ;; -> nil|symbol|blood--recipe-s
   ""
   (cond ((null args)
          nil)
         ((symbolp args)
          args)
+        ((and (listp args) (eq (car args) 'quote))
+         args
+         )
         ((listp args)
          (apply #'make-blood--recipe-s args))
         (t args)
         )
   )
 
-(defun blood-build-constraints (args)
+(defun blood-build-constraints (args) ;; -> blood--constraint-s
   (make-blood--constraint-s :emacs-version (plist-get args :emacs)
                             :os (plist-get args :os)
                             :system (ensure-list (plist-get args :system))
@@ -196,85 +198,110 @@
                             )
   )
 
-(defun blood-build-advice (args)
-  "TODO"
-  (ensure-list args)
+(defun blood-build-advice (args) ;; -> nil|blood--advice-s
+  "Build a description of advice to add, later"
+  (let ((advisors (plist-get args :advisors)))
+    (cl-loop for adv in advisors
+             do
+             (unless (eq 2 (length adv)) (error "Bad Advisor" adv))
+             (unless (-contains? '(:around :before :after :override :after-until :after-while
+                                   :before-until :before-while :filter-args :filter-return )
+                                 (car adv))
+               (error "Bad Advisor location" adv)
+               )
+             )
+    (if advisors
+        (make-blood--advice-s :targets   (ensure-list (plist-get args :targets))
+                              :advisors  advisors)
+      nil
+      )
+    )
   )
 
-(defun blood-build-paths (args)
-  (make-blood--paths-s :cache   (ensure-list (plist-get args :cache))
-                       :install (ensure-list (plist-get args :install))
-                       :build   (ensure-list (plist-get args :build))
-                       :modules (ensure-list (plist-get args :modules))
-                       )
+(defun blood-build-paths (args) ;; -> blood--paths-s
+  "Build the blood path descriptors, using default values if necessary for everything except modules"
+  (unless (plist-get args :modules) (error (format "No Modules location specified: %s" args) args))
+  (let ((paths (make-blood--paths-s :cache   (or (plist-get args :cache) blood-cache-dir)
+                                    :install (or (plist-get args :install) blood--install-loc-default)
+                                    :build   (or (plist-get args :build) blood--build-loc-default)
+                                    :modules (ensure-list (plist-get args :modules))
+                                    :secrets (ensure-list (or (plist-get args :secrets) blood--secrets-loc-default))
+                                    )))
+    (log! :debug "Built Paths: %s" paths)
+    paths
+    )
   )
 
-(defun blood-build-id-from-path (name path)
+(defun blood-build-id-from-path (name path) ;; -> blood--identifier-s
   " build an identifier from a name and the path of its definition,
-    for pacakges"
+for pacakges
+eg: (bbifp 'test' '/blah/bloo/blee/example.el') -> (iden :package test :group bloo :module blee)
+"
   (let* ((parts (reverse (split-string path "/" t "\s+")))
          (file (pop parts))
          (module (pop parts))
          (group (pop parts))
          )
-    (make-blood--identifier-s :package name
-                              :source path
-                              :group group
-                              :module module
+    (unless (and file module group)
+      (error (format "To Build an Id from a path, it needs to have ../group/module/file.el: %s" path)))
+    (make-blood--identifier-s :package (if (symbolp name) name (intern name))
+                              :source  path
+                              :group   (intern group)
+                              :module  (intern module)
                               )
     )
   )
 
-(cl-defun blood-uniq-id (obj)
+(cl-defun blood-uniq-id (obj) ;; -> symbol
   "Take an object and return a uniq id, as ...symbol?"
-  (let ((result (cond ((blood--profile-s-p obj)
-                      (blood--identifier-s-profile (blood--profile-s-id obj)))
-                     ((blood--module-s-p obj)
-                      (blood--id-sym (blood--module-s-id obj) :group t :module t))
-                     ((blood--package-s-p obj)
-                      (blood--id-sym (blood--package-s-id obj) :group t :module t :package t))
-                     ((stringp obj)
-                      (intern obj))
-                     (t (error "Unrecognized id source type" obj))
-                     )
+  (let ((result (cond ((blood--profile-s-p obj) (blood--identifier-s-profile (blood--profile-s-id obj)))
+                      ((blood--module-s-p obj)  (blood--id-sym (blood--module-s-id obj) :group t :module t))
+                      ((blood--package-s-p obj) (blood--id-sym (blood--package-s-id obj) :group t :module t :package t))
+                      ((stringp obj) (intern obj))
+                      (t (error "Unrecognized id source type" obj))
+                      )
                 )
         )
-    (cl-assert (symbolp result))
+    (unless (symbolp result) (error "Building unique ID failed" obj))
     result
     )
   )
 
-(cl-defun blood--id-sym (obj &key (profile nil) (group nil) (module nil) (package nil))
-  " Returns a symbol of [group|module|package] interned together
- separated by colons.
+(cl-defun blood--id-sym (obj &key (profile nil) (group nil) (module nil) (package nil)) ;; -> symbol[*:*:...]
+  "Returns a symbol of [group|module|package] interned together
+ separated by colons, from the provided object.
    so (obj :module t) -> module
    (obj :group t :module t) -> group:module
    (obj :group t :package t) -> group:package
 "
 
-  (let ((id (cond ((blood--module-s-p obj)
-                   (blood--module-s-id obj))
-                  ((blood--package-s-p obj)
-                   (blood--package-s-id obj))
+  (let ((id (cond ((blood--module-s-p obj) (blood--module-s-id obj))
+                  ((blood--package-s-p obj) (blood--package-s-id obj))
+                  ((blood--identifier-s-p obj) obj)
                   (t nil)))
         result
         )
-    (unless id
-      (error "Can't get a id component of a non-module or pacakge" obj))
-    (when package
-      (push (blood--identifier-s-package id) result))
-    (when module
-      (push  (blood--identifier-s-module id) result))
-    (when group
-      (push (blood--identifier-s-group id) result))
-    (when profile
-      (push (blood--identifier-s-profile id) result))
+    (unless id (error "Can't get a id component of a non-module or pacakge" obj))
+    (when package (push (blood--identifier-s-package id) result))
+    (when module  (push  (blood--identifier-s-module id) result))
+    (when group   (push (blood--identifier-s-group id)   result))
+    (when profile (push (blood--identifier-s-profile id) result))
 
-    (unless result
-      (error "Must get at least one part of the identifier"))
+    (unless result (error "Must get at least one part of the identifier"))
     (intern (string-join (mapcar #'symbol-name (seq-remove #'null result)) ":"))
     )
   )
+
+;;-- utils
+
+(defun blood--profile-s-name (profile)
+  (blood--identifier-s-profile (blood--profile-s-id profile)))
+
+(defun blood--package-s-id (package-spec)
+  (blood--identifier-s-package (blood--package-s-id package-spec))
+  )
+
+;;-- end utils
 
 (provide 'blood-structs)
 

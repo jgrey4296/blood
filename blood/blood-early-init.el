@@ -71,20 +71,18 @@
       no-byte-compile                              t
       no-native-compile                            t
       comp-no-spawn                                t
-      native-comp-jit-compilation                         nil
-      native-comp-always-compile                          nil
-      native-comp-enable-subr-trampolines                 nil
-      package-native-compile                              nil
-      comp-files-queue                                    nil
-      async-bytecomp-allowed-packages                     nil
-      native-comp-jit-compilation-deny-list      '(".")
-      native-comp-bootstrap-deny-list            '(".")
-      native-comp-async-jobs-number 1
-      ;; native-comp-eln-load-path       nil ;;(list (file-name-as-directory (expand-file-name comp-native-version-dir invocation-directory)))
-      auto-save-list-file-prefix (expand-file-name "autosave/.saves-" blood-cache-dir)
+      native-comp-jit-compilation                  nil
+      native-comp-always-compile                   nil
+      native-comp-enable-subr-trampolines          nil
+      package-native-compile                       nil
+      comp-files-queue                             nil
+      async-bytecomp-allowed-packages              nil
+      native-comp-jit-compilation-deny-list        (list ".")
+      native-comp-bootstrap-deny-list              (list ".")
+      auto-save-list-file-prefix                   (expand-file-name "auto-save/.saves-" blood-cache-dir)
 
       ;; for any initial caches
-      user-emacs-directory (expand-file-name "~/.cache/blood/profiles/startup")
+      user-emacs-directory (expand-file-name "profiles/startup" blood-cache-dir)
       )
 
 (startup-redirect-eln-cache (expand-file-name blood--eln-cache-name blood-cache-dir))
@@ -139,6 +137,20 @@
 
 (loaded? blood-defs blood-log blood-utils blood-deferral blood-core blood-hooks blood-profile blood-bootstrap blood-cmds)
 
+;;-- queue cmd
+(if-let  ((cmd (intern-soft (format "blood--cmd-%s" blood--cmd))))
+    (progn (ilog! "Setting up Cmd: %s" blood--cmd)
+           (funcall cmd)
+           )
+  (log! :warn (format "Command Not Defined: %s" blood--cmd)))
+;;-- end queue cmd
+
+(add-hook 'after-init-hook #'blood--clear-log-prefix    (bloody-lazy! :finalize))
+(add-hook 'after-init-hook #'blood--report-after-init-h (bloody-lazy! :bootstrap))
+(add-hook 'after-init-hook #'blood--final-report-h      (bloody-lazy! :finalize))
+(add-hook 'after-init-hook #'blood--write-messages-to-log-file-h (bloody-lazy! :finalize 1))
+(hlog! "Early Init Complete")
+(blood--write-messages-to-log-file-h)
 (provide 'blood-early-init)
 
 ;;-- Footer

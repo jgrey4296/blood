@@ -1,12 +1,27 @@
 ;; blood-defs.el -*- mode: elisp; lexical-binding: t; -*-
+(llog! "Blood Defs")
 
 (defgroup blood nil "Blood settings")
 
-;;-- consts
+;;-- env vars
 
-(defconst BLOOD-CACHE-ENV-VAR "BLOOD_CACHE")
+(defconst BLOOD-CONFIG-ENV-VAR "BLOOD_CONFIG")
+
+(defconst BLOOD-CACHE-ENV-VAR  "BLOOD_CACHE")
 
 (defconst BLOOD-PROFILE-ENV-VAR "BLOOD_PROFILE")
+
+(defcustom blood-config-dir (expand-file-name (or (getenv BLOOD-CONFIG-ENV-VAR)
+                                                  "~/.config/blood/"))
+  "directory for config files")
+
+(defcustom blood-cache-dir  (expand-file-name (or (getenv BLOOD-CACHE-ENV-VAR)
+                                                  "~/.cache/blood"))
+  "the directory to use as the emacs/straight cache head")
+
+;;-- end env vars
+
+;;-- consts
 
 (defconst BLOOD-PROFILE-FILE-PATTERN "profile\\(-.+\\)?.el" "blood will search and load all profiles in files with this name")
 
@@ -45,6 +60,12 @@ if you're lazy, you run later than others.
 use `bloody-lazy!' to convert the values
 "
   )
+
+(defconst blood--install-loc-default (expand-file-name "install" blood-cache-dir) "Default location for blood packages installation")
+
+(defconst blood--build-loc-default   (expand-file-name "build" blood-cache-dir)   "Default build location of packages")
+
+(defconst blood--secrets-loc-default "~/.config/secrets"       "Default location for secrets")
 ;;-- end consts
 
 ;;-- vars
