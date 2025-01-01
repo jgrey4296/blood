@@ -1,5 +1,6 @@
 ;; blood-trace.el -*- mode: elisp; lexical-binding: t; -*-
-  (require 'memory-report)
+(require 'memory-report)
+(llog! "Blood Trace")
 
 ;; Blood Memory growth tracing
 ;; overall obj memory usage:
@@ -8,6 +9,9 @@
 ;; (memory-report--buffers)
 ;; (memory-report--largest-variables)
 
+(defvar blood--trace-current-package nil "The symbol of the current package being loaded")
+(defvar blood--trace-pre-hook nil "A hook for functions run *before* loading a package. (lambda ()). use blood--trace-current-pacakge")
+(defvar blood--trace-post-hook nil "A hook for functions run *after* loading a package. (lambda ()). use blood--trace-current-package")
 (defvar blood--trace-memory-list nil)
 (defvar blood--trace-precount nil)
 (blood-register-cache! :trace #'(lambda (data) (string-join (mapcar #'(lambda (x) (format "%-20s : %s" (car x) (cdr x))) data) "\n"))
@@ -15,19 +19,20 @@
                        )
 
 
-(defmacro blood-trace--memory-pre (package)
-  (when blood--trace-memory
-    `(setq blood--trace-precount (cdar (memory-report--garbage-collect)))
-    )
+(defun blood-trace--memory-pre (package)
+  "macro for getting memory state before loading a package"
+  (setq blood--trace-precount (cdar (memory-report--garbage-collect)))
   )
 
 (defmacro blood-trace--memory-post (package)
+  "macro for getting memory state after loading a package "
   (when blood--trace-memory
     `(push (cons ,package (- (cdar (memory-report--garbage-collect)) blood--trace-precount)) blood--trace-memory-list)
     )
   )
 
 (defun blood-trace--memory-report-h ()
+  "hook for generating a memory growth report"
   (hlog! "Package Memory Growth: ")
   (let ((growth-list (reverse blood--trace-memory-list)))
     (dolist (pair growth-list)
@@ -37,7 +42,8 @@
     )
   )
 
-(defun blood-trace--load-timing-h ()
+(defun blood-trace--timing-report-h ()
+  "a hook for generating a load timing report"
   (ilog! "TODO: trace the time it takes to load packages")
 
   )
@@ -80,6 +86,20 @@ conses, symbols, strings, string-bytes, vectors, vector-slots, floats, intervals
           )
       counts
       ))
+  )
+
+(defun blood-tracing? (&optional package)
+  "A test for whether tracing is active returns: t | nil"
+  t
+  )
+
+(defmacro blood-trace-load-wrap (package-sym &rest body)
+  "Wraps the body with the trace hooks"
+    `(let ((blood--trace-current-package ,package-sym))
+       (run-hooks 'blood--trace-pre-hook)
+       ,@body
+       (run-hooks 'blood--trace-post-hook)
+       )
   )
 
 (provide 'blood-trace)

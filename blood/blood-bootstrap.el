@@ -1,63 +1,44 @@
 ;;; bootstrap.el -*- lexical-binding: t; -*-
+(loaded? blood-defs blood-log blood-utils blood-structs blood-backend)
 (llog! "Bootstrap")
 
-(defvar BLOOD-BOOTSTRAPPED nil)
-
-(defvar blood--bootstrap-queue nil)
+(defvar blood--bootstrap-queue nil "A queue of profile specs to bootstrap")
 
 (defcustom blood-additional-bootstrappers nil "functions to run as part of the bootstrap process" :type 'list)
 
-(defcustom blood--backend-default nil
-  "The plist describing the default backend to use. comprised of :name, :require, :bootstrap and :actviator ")
-
 (defun blood-bootstrap-h ()
-  "For each declared profile in the quue, bootstrap it, using blood--bootstrap-defaults
-if the profile doesn't provide its own bootstrappers.
-will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
+  "For each declared profile in the queue, bootstrap it.
+will always run blood--bootstrap-git-check-h and blood--bootstrap-core-paths-h "
   (hlog! "Bootstrapping")
-  (unless blood--backend-default
-    (require 'blood--straight)
-    (setq blood--backend-default (list :name 'straight
-                                       :require 'straight
-                                       :bootstrap (list
-                                                   #'blood--bootstrap-straight
-                                                   #'blood--bootstrap-straight-init
-                                                   )
-                                       :activator #'blood--bootstrap-straight-init
-                                       :sync #'blood--sync-straight
-                                       ))
-    )
+  (when BLOOD-BOOTSTRAPPED (error "Trying to bootstrap blood when it's already been bootstrapped"))
+  (add-hook 'blood-bootstrap-hook #'blood--bootstrap-env-h -90)
+  (add-hook 'blood-bootstrap-hook #'blood--bootstrap-core-paths-h -89)
+  (add-hook 'blood-bootstrap-hook #'blood--bootstrap-git-check-h  -88)
+  (add-hook 'blood-bootstrap-hook #'blood--backend-activate-h -87)
+  (add-hook 'blood-bootstrap-hook #'blood--bootstrap-keybindings-h)
+  ;; TODO bootstrap a backend
+  (run-hooks 'blood-bootstrap-hook)
 
-  (blood--bootstrap-git-check)
-  (blood--bootstrap-core-paths)
   (if (not blood--bootstrap-queue)
-      (ilog! "Nothing More to bootstrap")
+      (ilog! "No Profiles Queued to bootstrap")
     (dolist (spec blood--bootstrap-queue)
-      (ilog! "Bootstrapping Profile: %s" (plist-get spec :name))
-      (dolist (fn (or (plist-get spec :bootstrap) (plist-get blood--backend-default :bootstrap)))
+      (ghlog! "Bootstrapping Profile: %s" (blood--profile-s-name spec))
+      (dolist (fn (blood--profile-s-bootstrap spec))
         (ilog! "Calling: %s" fn)
         (funcall fn spec)
         )
+      (glogx!)
       )
-    (setq BLOOD-BOOTSTRAPPED t)
     )
+  (glogxs!)
+  (setq BLOOD-BOOTSTRAPPED t)
   )
 
-(defun blood--bootstrap-core-paths ()
-  "Make the core paths needed for running blood"
-  (ghlog! "Bootstrapping Paths")
-  (let ((cache-dir (expand-file-name  blood-cache-dir)))
-    (unless (file-exists-p cache-dir)
-      (ilog! "Making cache Directory")
-      (make-directory cache-dir 'recursive))
-    )
-  (glogx!)
-  )
-
-(defun blood--bootstrap-git-check ()
+(defun blood--bootstrap-git-check-h ()
   "bootstrap or complain about git"
   (ghlog! "Checking for Git")
-  (unless (executable-find "git")
+  (if (executable-find "git")
+      (ilog! "Found Git")
     (user-error "Git isn't present on your system. Cannot proceed."))
   (let* ((version (cdr (blood--call "git" "version")))
          (version
@@ -71,10 +52,29 @@ will always run blood--bootstrap-git-check and blood--bootstrap-core-paths "
   (glogx!)
   )
 
-(defun blood--bootstrap-env ()
-  (ghlog! "Bootstrapping Env")
-
+(defun blood--bootstrap-core-paths-h ()
+  "Make the core paths needed for running blood"
+  (ghlog! "Bootstrapping Profile-agnostic Paths")
+  (let ((cache-dir  blood-cache-dir))
+    (if (file-exists-p cache-dir)
+        (ilog! "Cache Exists: %s" cache-dir)
+      (ilog! "Making cache Directory: %s" cache-dir)
+      (make-directory cache-dir 'recursive))
+    )
   (glogx!)
+  )
+
+(defun blood--bootstrap-env-h ()
+  (ghlog! "Bootstrapping Env")
+  (ilog! "TODO: bootstrap blood env")
+  (glogx!)
+  )
+
+(defun blood--bootstrap-keybindings-h ()
+  (ilog! "TODO: bootstrap keybindings")
+  (keymap-set messages-buffer-mode-map "j" #'next-line)
+  (keymap-set messages-buffer-mode-map "k" #'previous-line)
+
   )
 
 (provide 'blood-bootstrap)

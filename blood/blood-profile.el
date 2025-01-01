@@ -7,7 +7,6 @@
 ;; Maintainer: John Grey <johngrey@Johns-Mac-mini.local>
 ;; Created: September 08, 2023
 ;; Modified: September 08, 2023
-;; Version: 0.0.1
 ;; Keywords:
 ;; Homepage: https://github.com/jgrey4296
 ;; Package-Requires: ((emacs "24.3"))
@@ -21,9 +20,9 @@
 ;;
 ;;; Code:
 ;;-- end header
+(loaded? blood-defs blood-log blood-utils)
 (llog! "Profile Lib")
-
-(defconst BLOOD-PROFILE-FILE-PATTERN "profile\\(-.+\\)?.el" "blood will search and load all profiles in files with this name")
+(require 'blood-structs)
 
 (defvar blood-profile--declared-ht     (make-hash-table) "All declared profiles, which can be activated later. Use `blood-profile--register' to add. keys are profile names as symbols ")
 
@@ -38,40 +37,55 @@
 (defvar blood-profile--post-activate-hook nil "Functions to run when activating a profile")
 
 (defun blood-profile-start-h (&optional profile clear quiet)
-  "Start the cli specified / default profile"
+  "Start the cli specified / default profile
+Clears the profile stack,
+sets paths for profile,
+"
   (interactive)
   (when clear
     (ilog! "Clearing Profile Stack")
     (setq blood-profile-active-specs nil
-  native-comp-eln-load-path (expand-file-name blood--eln-cache-name blood-cache-dir)
+          native-comp-eln-load-path (ensure-list (expand-file-name blood--eln-cache-name blood-cache-dir))
           load-path blood--original-load-path
           )
     (run-hooks 'blood-profile--clear-hook)
     )
-  (unless (or profile blood-profile--default)
-    (error "No Profile Provided, no default profile set"))
+  (unless (or profile blood-profile--default) (error "No Profile Provided, no default profile set"))
 
   (let* ((profile (or profile blood-profile--default))
-         (spec (if (stringp profile) (gethash (intern profile) blood-profile--declared-ht) profile))
-         (backend (or (plist-get spec :backend) blood--backend-default))
+         (spec (cond ((stringp profile) (gethash (intern profile) blood-profile--declared-ht))
+                     ((symbolp profile) (gethash profile blood-profile--declared-ht))
+                     (t profile)
+                     ))
+         (backend-sym (cond ((blood--profile-s-p spec)
+                             (or (blood--profile-s-backend spec) blood--backend-default))
+                            (t blood--backend-default)
+                            ))
          )
-    (unless spec (error "No Matching Spec: %s" profile))
-    (unless quiet (ghlog! "Activating Profile Spec: %s" (plist-get spec :name)))
+    (blood--set-backend backend-sym)
+    (unless quiet (hlog! "Activating Profile Spec: %s" (blood--profile-s-name spec)))
     (push spec blood-profile-active-specs)
-    (funcall (plist-get backend :activator) spec)
+    (ghlog! "Bootstapping Backend")
+    (funcall (blood--backend-s-bootstrap blood--backend-active) spec)
+    (glogx!)
+    (ghlog! "Initialising Backend")
+    (funcall (blood--backend-s-activator blood--backend-active) spec)
+    (glogx!)
     (run-hooks 'blood-profile--post-activate-hook)
     (unless quiet (glogx!))
     )
   )
 
 (defun blood-profile--register (spec)
-  ""
-  (let ((profile-name (intern (plist-get spec :name)))
+  "Register a new profile"
+  (let ((profile-name (blood--profile-s-name spec))
         )
     ;; Handle non-interactive startup variations:
-    (when (gethash profile-name blood-profile--declared-ht)
-      (warn "Duplicated profile name, as the profile spec list is an alist, only the last profile of this name will be usable" 'profile profile-name))
-    (ilog! "Registering profile: %s" profile-name)
+    (when-let ((profile (gethash profile-name blood-profile--declared-ht)))
+      (log! :warn "Duplicated profile name '%s', overriding" profile-name)
+      (log! :warn "Existing profile: %s" profile)
+      )
+    (ilog! "+ Profile: %s" profile-name)
     (puthash profile-name spec blood-profile--declared-ht)
     )
   )
@@ -80,80 +94,31 @@
   (car blood-profile-active-specs)
   )
 
-(defmacro blood-profile--build-spec (profile-name default disabled args)
-  "is a macro to allow expansion and checking of init.el"
-  `(progn
-     (ghlog! "Building Profile: %s" ,profile-name)
-     (prog1 (list
-             :name                 ,profile-name
-             :source               (file!)
-             :default              ,default
-             :disabled             ,disabled
-             :bootstrap            ,(or (plist-get args :bootstrap) (list))
-             :modules              ,(blood-profile--build-active-modules (memq :active-modules: args))
-             :constraints          (list :system        ,(plist-get args :on-system)
-                                         :emacs-version ,(plist-get args :on-emacs)
-                                         )
-             :paths                (list :install ,(plist-get args :install-to)
-                                         :build   ,(plist-get args :build-to)
-                                         :modules ,(cons 'list (plist-get args :modules-from))
-                                         )
-             :recipes              ,(plist-get args :recipes)
-             :block-compile-of     ,(plist-get args :block-compile-of)
-             :post-activation      ,(when (plist-get args :on-activation)
-                                      `(lambda () ,@(plist-get args :on-activation)))
-             )
-       (glogxs!)
-       )
-     )
-  )
-
-(defun blood-profile--build-active-modules (lst)
-  "Convert the remaining list into a list of (:group %s :module %s :allow () :disallow ())"
-  (let ((source (cl-copy-list lst))
-        curr
-        result)
-    (glog! "Parsing Active Module List: %s" lst)
-    (while source
-      (pcase (pop source)
-        (:active-modules: nil)
-        ((and kw (pred keywordp) (guard (memq kw '(:allow :disallow))))
-         (setq curr (append curr (list kw (pop source))))
-         )
-        ((and kw (pred keywordp))
-         (when curr (push curr result) (setq curr nil))
-         (ilog! "Registering Active Module: %s" kw)
-         (setq curr (append curr (list :group (substring (symbol-name kw) 1)
-                                       :module (symbol-name (pop source))
-                                       )))
-         )
-        (other
-         (ilog! "Unknown module declaration: %s" other)
-         )
-        )
-      )
-    (when curr (push curr result))
-    (glogx!)
-    (ilog! "Active Modules Parsed: %s" result)
-    (when result (list 'quote result))
-    )
-  )
-
-(defun blood-user-files! ()
-  (setq user-emacs-directory (expand-file-name (file-name-concat "profiles" (plist-get (blood-profile-current) :name) "user-files") blood-cache-dir))
-  (ilog! "User Emacs Directory Set to: %s" user-emacs-directory)
+(defun blood-user-files-h ()
+  "set the location of the user emacs directory from the current profile"
+  (ilog! "Setting User Emacs Directory to profile: %s" (blood--profile-s-name (blood-profile-current)))
+  (setq user-emacs-directory (expand-file-name (file-name-concat
+                                                "profiles"
+                                                (symbol-name (blood--profile-s-name (blood-profile-current)))
+                                                "user-files")
+                                               blood-cache-dir))
   (unless (file-exists-p user-emacs-directory)
     (make-directory user-emacs-directory t)
       )
   )
 
-(defun blood-auto-saves! ()
-  (setq auto-save-dir (expand-file-name (file-name-concat (plist-get (blood-profile-current) :name) "auto-saves") blood-cache-dir)
-        auto-save-list-file-prefix (file-name-concat auto-save-dir "save-"))
+(defun blood-auto-saves-h ()
+  "set the location of the auto-save-dir using the current profile"
+  (ilog! "Setting Auto Save location to profile: %s" (blood--profile-s-name (blood-profile-current)))
+  (setq auto-save-dir (expand-file-name (file-name-concat
+                                         (symbol-name (blood--profile-s-name (blood-profile-current)))
+                                         "auto-save") blood-cache-dir)
+        auto-save-list-file-prefix (file-name-concat auto-save-dir "save-")
+        )
   )
 
-(add-hook 'blood-profile--post-activate-hook #'blood-user-files!)
-(add-hook 'blood-profile--post-activate-hook #'blood-auto-saves!)
+(add-hook 'blood-profile--post-activate-hook #'blood-user-files-h)
+(add-hook 'blood-profile--post-activate-hook #'blood-auto-saves-h)
 
 (provide 'blood-profile)
 ;;; blood-profile.el ends here

@@ -1,0 +1,209 @@
+#+TITLE: Blood Todos
+#+STARTUP: agenda
+
+reminder: use subu in bash for testing profile
+
+* Triage
+** [∅] refactor existing code to use new structs
+** [∅] test terminal forcing
+** [∅] factory out doom-restore-menu-bar-in-gui-frames-h
+[[file:/media/john/data/github/lisp/blood/blood/blood-hooks.el::add-hook 'window-setup-hook #'doom-restore-menu-bar-in-gui-frames-h][blood-hooks]]
+** [∅] remove dependency on straight for dag
+
+** [∅] blood-build-constraints
+
+** [∅] blood-build-recipes
+
+** [∅] blood-build-paths
+
+** [∅] blood-build-advise
+
+** [∅] make struct constructors return identifiers on failure
+
+** [∅] add a 'disable' declaration option
+
+* blood :blood:
+:PROPERTIES:
+:ID:       a9c88b0c-54c5-48f4-9a4b-0a60cf9f8102
+:END:
+** Features                                     :feature:
+*** [∅] bootstrap
+*** [∅] clean
+*** [∅] core
+*** [∅] dag
+*** [∅] deferral
+*** [∅] defs
+*** [∅] early-init
+*** [∅] hooks
+*** [∅] log
+*** [∅] modules
+**** [∅] package autoloads
+**** [∅] setup advice
+**** [∅] setup hooks
+*** [∅] profile
+*** [∅] report
+*** [∅] stub
+*** [∅] sync
+*** [∅] trace
+*** [∅] utils
+**** [∅] advise load
+*** [∅] native
+*** [∅] straight
+**** [∅] convert package specs to straight recipes
+**** [∅] disable straights popups
+** Entry Points
+*** [∅] blood!
+*** [∅] use!
+*** [∅] install!
+*** cmd-sync
+*** cmd-clean
+*** cmd-report
+*** cmd-batch
+*** cmd-stub
+*** cmd-run
+** Structs
+*** [∅] profile
+*** [∅] module-declaration
+*** [∅] module-spec
+*** [∅] paths
+*** [∅] recipe
+*** [∅] package-id
+*** [∅] module-declaration
+*** [∅] module-spec
+* Testing :test:
+** [∅] deferral
+** [∅] profile/module/package building
+** [∅] dag
+** [∅] logging
+** [∅] sync
+** [∅] trace
+** [∅] force terminal
+** [∅] inhibitions
+** [∅] caches
+** [∅] native compilation
+** [∅] straight setup
+** [∅] bootstraps
+** [∅] cleaning
+** [∅] cli control
+* Documentation
+* [[file:/media/john/data/github/lisp/blood_bind/.tasks/blood_bind_todos.org::*Blood Bind][Blood Bind]]
+* Blood Basic Profile
+** config default
+** config disabled
+** config help
+** config search
+** config ui
+** editor buffer-nav
+** editor evil
+** editor text-manipulation
+** editor undo
+** editor window-nav
+** tools dired
+** ui helm
+** ui hydra
+** ui ibuffer
+** ui ivy
+** ui minibuffer
+** ui ophints
+** ui popup
+** lang-weakly-typed lisp-langs
+** lang-weakly-typed python
+
+
+* BLOCKED Blood Modules :module:blood:
+** Modules
+*** config
+**** bindings
+**** default
+**** disabled
+**** help
+**** linux
+**** mac
+**** search
+**** ui
+**** windows
+*** editor
+**** autosave
+**** buffer-nav
+**** evil
+**** fold
+**** large-files
+**** tagging
+**** text-manipulation
+**** undo
+**** window-nav
+*** experimentation
+*** ide
+**** company
+**** debugger
+**** diff
+**** librarian
+**** minimap
+**** snippets
+**** support
+**** version-control
+**** workspaces
+*** lang-data
+**** csv
+**** dot
+**** graphql
+**** json
+**** logs
+**** nu
+**** sql
+**** toml
+**** xml
+**** yaml
+*** lang-dsl
+**** acab
+**** ai-and-logic
+**** music
+**** nix
+**** qt
+**** rest
+**** sh
+*** lang-strongly-typed
+**** coq
+**** dotnet-langs
+**** fstar
+**** haskell
+**** idris
+**** jvm-langs
+**** lean
+**** ml-langs
+**** rust
+*** lang-text
+**** bibtex
+**** inform
+**** latex
+**** markdown
+**** org
+**** plantuml
+**** rst
+**** web
+*** lang-weakly-typed
+**** erlang-vms
+**** godot
+**** lisp-langs
+**** lua
+**** python
+**** ruby
+*** tools
+**** calendar
+**** dired
+**** eval
+**** mail
+**** pdfs
+**** processes
+**** term
+*** ui
+**** doom-ui
+**** helm
+**** hydra
+**** ibuffer
+**** ivy
+**** minibuffer
+**** ophints
+**** popup
+
+* Links
