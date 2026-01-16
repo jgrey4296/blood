@@ -1,3 +1,5 @@
+
+.eask
 .DS_Store
 .idea
 *.log
@@ -51,4 +53,4 @@ cabal.project.local~
 .HTF/
 .ghc.environment.*
 
-/.local/
+.local/
