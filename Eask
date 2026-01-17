@@ -5,23 +5,25 @@
          "An emacs framework")
 
 (website-url "https://github.com/jgrey4296/blood")
-(keywords )
+(keywords "init" "framework")
 
-(package-file "src/blood.el")
-(files "src/blood-*.el"
+(package-descriptor "src/blood-pkg.el")
+(files "src/blood.el"
+       "src/blood-*.el"
        "src/blood--*.el"
        "early-init.el"
        '(:exclude "./related/**")
+       '(:exclude "src/__tests/*")
        )
-
-(script "test" "echo \"Error: no test specified\" && exit 1")
 
 (source "gnu")
 (source "melpa")
 
 (depends-on "emacs" "30.2")
-(depends-on "cl-lib")
+(depends-on "cl-lib" "1.5")
 
 (development
-
+ (depends-on "evil")
  )
+
+(script "test" "echo 'this is a test'")

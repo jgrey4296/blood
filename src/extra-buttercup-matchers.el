@@ -57,9 +57,4 @@ eg: cl-{class}-p "
 
 
 (provide 'extra-buttercup-matchers)
-;; Local Variables:
-;; read-symbol-shorthands: (
-;; ("mbc-" . "more-buttercup-matchers-")
-;; )
-;; End:
 ;;; more-buttercup-matchers.el ends here

@@ -6,16 +6,17 @@
 ;; see emacs-lisp/package.el.gz
 (llog! "Blood Backend: package.el")
 
-(defconst blood--bootstrap-package-el-backend-default (blood-build-backend 'package-el
-                                                                           :requires 'package
-                                                                           :bootstrap nil
-                                                                           :activator nil
-                                                                           :sync nil
-                                                                           :clean nil
-                                                                           )
+(defconst blood--backend-package-el-default
+  (blood-build-backend 'package-el
+                       :requires 'package
+                       :bootstrap nil
+                       :activator nil
+                       :sync nil
+                       :clean nil
+                       )
   )
 
-(defun blood--backend-set-package-el ()
+(defun blood--backend-package-el-set ()
   (setq blood--backend-active blood--bootstrap-package-el-backend-default)
   )
 

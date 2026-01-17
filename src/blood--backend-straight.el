@@ -1,4 +1,4 @@
- ;;; blood--straight.el -*- lexical-binding: t; no-byte-compile: t; -*-
+;;; blood--straight.el -*- lexical-binding: t; no-byte-compile: t; -*-
 ;;  integrates straight into the blood bootstrap and sync api
 (llog! "Straight backend")
 (loaded? blood-backend)
@@ -146,7 +146,7 @@ adapted from doom--ensure-straight
 
   (dolist (spec packages)
     (let* ((package (blood--identifier-s-package (blood--package-s-id spec)))
-           (recipe  (blood--package-to-straight-recipe spec))
+           (recipe  (blood--backend-straight-recipe-gen spec))
            )
       (ghlog! "Installing package: %s" package)
       (ilog! "Recipe: %s" recipe)
@@ -204,7 +204,7 @@ eg: emacs.d/straight/build-28.2
   (advice-add 'straight--build-dir :override #'blood--backend-straight-build-dir-ad)
   )
 
-(defun blood--package-to-straight-recipe (package-spec)
+(defun blood--backend-straight-recipe-gen (package-spec)
   " Create a recipe from a blood--package-s,
 returns a list for straight"
   (let ((recipe (blood--package-s-recipe package-spec))
