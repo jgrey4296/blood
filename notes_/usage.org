@@ -1,0 +1,60 @@
+#+TITLE: Blood Usage
+
+* ASDF
+
+
+* CLI calls:
+ 1: bootstrap -> install -> compile (--target=, --profile=)
+ 3: report
+ 4: run  --debug --stepped --timed --memory
+ 5: quick run (minimal)
+ 6: stub-module
+
+ Dependencies:
+ Straight.
+ Git.
+
+* CLI Usage
+** sync
+registers all profiles, finds modules, and installs module packages
+** run
+registers profiles, bootstraps,
+sets up defaults,
+activates profile,
+inits packages
+configs packages
+** clean
+registers profiles, deletes cache dirs
+** report
+registers profiles,
+generates report on
+- load order
+- memory usage
+- load time
+- packages
+- modules
+- profiles
+** stub
+creates a new stub module/profile/package in a given location
+* Environment vars
+** BLOOD_CACHE
+** BLOOD_CONFIG
+** BLOOD_PROFILE
+** BLOOD_SRC
+** DEBUG
+* Lisp Macros
+** blood!
+** blood-lazy!
+** inhibit!
+** mquote!
+** blood--lambda!
+*** logging
+**** ilog!
+**** llog!
+**** dlog!
+**** ghlog!
+**** glog!
+**** glogx!
+**** glogxs!
+
+* Links

@@ -12,7 +12,7 @@
        "src/blood-*.el"
        "src/blood--*.el"
        "early-init.el"
-       '(:exclude "./related/**")
+       '(:exclude "_related/**")
        '(:exclude "src/__tests/*")
        )
 
@@ -25,5 +25,3 @@
 (development
  (depends-on "evil")
  )
-
-(script "test" "echo 'this is a test'")

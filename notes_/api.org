@@ -1,0 +1,101 @@
+#+TITLE: Blood API
+
+* Protocols
+** Startup:
+- $EMACSDIR/early-init.el
+  - add BLOOD_SRC to load-path
+  - Load blood-early-init:
+    - Load blood defs
+    - Load blood utils
+    - handle CLI args, possibly set to noninteractive
+    - activate debug (if DEBUG true or --debug-init-file)
+    - setup terminal
+    - set general performance vars, redirect eln cache
+    - load blood packages: core,hooks,deferral,profile,bootstrap
+    - provide blood-early-init
+   - hook: `before-init-hook'
+- USER_DIR/init.el
+     - expand any blood! calls, defining profiles
+     - add calls to after-init-hook based on the passed in cli command
+         - add blood-bootstrap-h
+         - add blood--setup-default-h
+         - add blood-profile-start-h
+         - add blood-native-setup-h
+         - add blood-modules--init-packages-h
+         - add blood-modules--config-packages-h
+         - if blood--trace-memory: add blood-trace--memory-report-h
+         - add blood-defer--start-h
+- hook: `after-init-hook'
+     - bootstraps the package manager (eg: straight)
+     - finds modules
+     - activates modules
+     - installs packages
+- hook: `emacs-startup-hook'
+- hook: `tty-setup-hook'
+- hook: `window-setup-hook'
+
+** Backends
+eg: straight, package.el, elpaca
+
+Uses blood--backend-s, which covers:
+#+begin_src elisp :results output
+(cl-defstruct blood--backend-s
+  "The interface functions of a package management backend"
+  (name      nil      :type symbol :doc "the name ofthe backend")
+  (requires  nil      :type list:symbol :doc "a list of package symbols this backend will require")
+  (bootstrap nil      :type list:lambda :doc "a list of (lamdba (profile)) -> nil, functions to configure the backend")
+  (activator nil      :type lambda :doc "(lambda (profile)) -> nil, activates the backend")
+  (sync      nil      :type lambda :doc "(lambda (packages)) -> nil, for the backend to install given packages")
+  )
+#+end_src
+
++ Backends are bootstrapped using `blood-bootstrap-hook`:
+ - bootstrap core paths
+ - bootstrap env
+ - bootstrap git
+ - bootstrap each profile using profile bootstrap fn OR backend bootstrap
+ - set BLOOD-BOOTSTRAPPED to t
+- Backends are activator in `blood-profile-start-h`.
+- Backends are synced in `blood-sync-h`.
+
+** Packages:
+#+begin_src elisp :results output
+(cl-defstruct blood--package-s
+  "A Specification of a package used in a module"
+  (id nil          :type blood--identifier-s)
+  (disabled nil    :type bool)
+  (defer nil       :type bool)
+  (debug nil       :type symbol :doc "trigger package specific debugging. nil|break|log")
+  (recipe nil      :type symbol|blood--recipe)
+  (after nil       :type list:symbol :doc "packages that must be loaded first")
+  (autoloads nil   :type list:function :doc "autoload triggers")
+  (constraints nil :type blood--constraint :doc "constraints for this package's use")
+  (on-init nil     :type lambda)
+  (on-load nil     :type lambda)
+  (on-ready nil    :type lambda)
+  (advice nil      :type list:blood--advice-s :doc "a list describing advice to add")
+  (hooks  nil      :type list:pair :doc "a list describing hooks to add. (*hookvars :> fns)")
+  (bind   nil      :type list :doc "a list describing functions to call to make bindings")
+  )
+#+end_src
+
+TODO: decide where to run 'on-ready'
+Packages are declared as part of a module.
++ expands the load path
++ `blood-modules--init-pacakges-h`
+  - calls on-init
+  - loads autoloads
+  - sets advice
+  - sets hooks
++ `blood-modules--config-packages-h`
+  - loads the dag order
+  + handles:
+   - deferral
+   - tracing
+   + else:
+    - requires the package
+    - registers repeatable specs (vars/bindings etc)
+    - runs on-load
+
+** Binding
+* Links

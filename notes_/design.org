@@ -1,0 +1,71 @@
+#+TITLE: Blood Design
+
+* Main
+
+
+** Sub-modules
+*** bootstrap
+*** clean
+*** core
+*** dag
+*** deferral
+*** defs
+*** early-init
+*** hooks
+*** log
+*** modules
+*** profile
+*** report
+*** structs
+*** stub
+*** sync
+*** trace
+*** utils
+*** native
+*** straight
+*** test
+** Structures
+*** blood--profile-s
+*** blood--module-s
+*** blood--package-s
+*** blood--constraint-s
+*** blood--recipe-s
+*** blood--paths-s
+*** blood--backend-s
+** Hooks
+*** blood-profile--clear-hooks
+*** blood-profile--post-activate-hook
+** Macros
+*** blood-lazy!
+*** inhibit!
+*** mquote!
+*** blood--lambda!
+** Functions
+*** blood-cache!
+*** blood-uniq-id
+*** blood-read-cache!
+*** blood-set-loglevel
+*** blood-register-cache!
+** Constants
+*** blood-available-cmds
+*** BLOOD_CACHE_ENV_VAR
+*** blood--eln-cache-name
+*** blood--hook-laziness
+*** blood-module-locations
+*** blood--original-load-path
+*** BLOOD_PROFILE_ENV_VAR
+*** blood-version
+
+** Variables
+*** blood--active-module-specs
+*** blood--caches
+*** blood--cmd
+*** blood--module-packages
+*** blood--package-declaration-failures
+*** blood-profile-active-specs
+*** blood-profile--declared-ht
+*** blood-profile--default
+*** blood-profile--installation-dir
+*** blood--trace-memory
+
+* Links

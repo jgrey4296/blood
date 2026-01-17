@@ -1,9 +1,0 @@
-[submodule "wiki_"]
-	path = wiki_
-	url = git@github.com:jgrey4296/blood.wiki.git
-[submodule "related/blood-bind"]
-	path = related/blood-bind
-	url = git@github.com:jgrey4296/blood-bind.git
-[submodule "modules"]
-	path = modules
-	url = git@github.com:jgrey4296/blood-modules.git
