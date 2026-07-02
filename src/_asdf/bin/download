@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# https://asdf-vm.com/plugins/create.html#bin-download
+# # Download a specified version
+# must download to ASDF_DOWNLOAD_PATH
+# on failure, clean download path
+
+set -euo pipefail
+
+uname_s=$(uname)
+case "$uname_s" in
+    Linux) ;;
+    *) echo "OS Not Supported: $uname_s" ;;
+esac
+
+current_script_path=${BASH_SOURCE[0]}
+plugin_dir=$(dirname "$(dirname "$current_script_path")")
+
+# shellcheck source=./lib/utils.bash
+source "${plugin_dir}/lib/utils.bash"
+
+mkdir -p "$ASDF_DOWNLOAD_PATH"
+
+# Nothing to download, just copy the asset scripts to download dir
+cp -r "${plugin_dir}/assets" "$ASDF_DOWNLOAD_PATH"

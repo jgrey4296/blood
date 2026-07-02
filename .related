@@ -4,10 +4,9 @@
 ;; Others are :{name} : {path} pairs
 ;; paths are relative
 
-:data        : data
-:docs        : docs
+:src         : src
+:asdf        : src/_asdf
+
 :github      : .github/workflows
-:tasks       : .tasks
+:tasks       : .polyglot/tasks
 :temp        : .temp
-:templates   : templates
-:wiki        : wiki_

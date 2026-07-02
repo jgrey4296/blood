@@ -11,7 +11,6 @@
 (files "src/blood.el"
        "src/blood-*.el"
        "src/blood--*.el"
-       "early-init.el"
        '(:exclude "_related/**")
        '(:exclude "src/__tests/*")
        )
